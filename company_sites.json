@@ -1,0 +1,4 @@
+{
+  "台積電": {"type": "html", "url": "https://pr.tsmc.com/chinese/latest-news", "selector": "a"},
+  "華碩": {"type": "html", "url": "https://www.asus.com/tw/news/", "selector": "a"}
+}

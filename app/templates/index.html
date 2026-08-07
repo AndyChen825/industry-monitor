@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>台灣產業趨勢監測與公司情報系統</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* 深色主題 — 色彩取自驗證通過之深色調色盤 */
+  :root {
+    color-scheme: dark;
+    --page:      #0d0d0d;   /* 頁面底 */
+    --surface:   #1a1a19;   /* 卡片/圖表面 */
+    --surface-2: #232322;   /* 次層(hover) */
+    --ink:       #ffffff;   /* 主要文字 */
+    --ink-2:     #c3c2b7;   /* 次要文字 */
+    --muted:     #898781;   /* 弱化文字 */
+    --grid:      #2c2c2a;   /* 髮絲線 */
+    --border:    rgba(255,255,255,0.10);
+    /* 類別色(深色版,固定順序) */
+    --c1: #3987e5; --c2: #d95926; --c3: #199e70; --c4: #c98500;
+    --c5: #d55181; --c6: #008300; --c7: #9085e9; --c8: #e66767;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft JhengHei", system-ui, "Segoe UI", sans-serif;
+    margin: 0; background: var(--page); color: var(--ink-2);
+  }
+  header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 28px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 18px; color: var(--ink); font-weight: 600; }
+  header .spacer { flex: 1; }
+  .btn {
+    padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+  }
+  .btn:hover { background: #2e2e2c; }
+  .btn.primary { background: var(--c1); border-color: transparent; }
+  .btn.primary:hover { background: #2a78d6; }
+  .btn.home { background: transparent; border-color: var(--c1); color: var(--c1); font-weight: 600; }
+  .btn.home:hover { background: rgba(57,135,229,0.12); }
+  .bar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    padding: 14px 28px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .bar label { font-size: 13px; color: var(--muted); }
+  select, input {
+    padding: 8px 10px; border: 1px solid var(--grid); border-radius: 8px;
+    font-size: 14px; background: var(--page); color: var(--ink);
+  }
+  input::placeholder { color: var(--muted); }
+  main { padding: 22px 28px; max-width: 1280px; margin: 0 auto; }
+  #status { font-size: 13px; color: var(--muted); margin: 0 0 12px; min-height: 18px; }
+
+  /* 圖表區 */
+  .viz-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 18px; }
+  @media (max-width: 900px) { .viz-grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .panel h2 { margin: 0 0 4px; font-size: 15px; color: var(--ink); font-weight: 600; }
+  .panel .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  #treemap { width: 100%; height: 340px; position: relative; }
+  .tm-block {
+    position: absolute; border-radius: 6px; cursor: pointer; overflow: hidden;
+    outline: 2px solid var(--surface);   /* 區塊間 2px 表面間隔 */
+    transition: filter .12s;
+  }
+  .tm-block:hover { filter: brightness(1.18); }
+  .tm-label { position: absolute; left: 7px; top: 5px; right: 6px; line-height: 1.35; }
+  .tm-name { font-size: 12px; font-weight: 600; display: block;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tm-count { font-size: 11px; opacity: .82; }
+
+  #wordcloud {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 6px 14px; min-height: 340px; padding: 8px 4px; align-content: center;
+  }
+  .wc-word { cursor: default; line-height: 1.25; transition: filter .12s; }
+  .wc-word:hover { filter: brightness(1.3); }
+
+  /* 產業篩選籤 */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 13px; border-radius: 16px; font-size: 13px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); color: var(--ink-2);
+  }
+  .chip:hover { background: var(--surface-2); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .chip.active { background: var(--surface-2); border-color: var(--ink-2); color: var(--ink); font-weight: 600; }
+
+  /* 文章卡片 */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--grid);
+    border-radius: 10px; padding: 13px 16px; margin-bottom: 9px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  .card h3 a { color: var(--ink); text-decoration: none; }
+  .card h3 a:hover { color: var(--c1); }
+  .meta { font-size: 12px; color: var(--muted); }
+  .summary { font-size: 13px; color: var(--ink-2); margin-top: 6px; }
+  .tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 2px 8px; margin-left: 8px;
+         background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--border); }
+  table.reg { border-collapse: collapse; font-size: 13px; width: 100%; }
+  table.reg td { border: 1px solid var(--grid); padding: 6px 9px; color: var(--ink-2); }
+  .note { font-size: 12px; color: #fab219; background: rgba(250,178,25,0.08);
+          border: 1px solid rgba(250,178,25,0.3); border-radius: 8px; padding: 9px 13px; margin: 8px 0; }
+  h2.section { font-size: 16px; color: var(--ink); margin: 20px 0 10px; }
+  h3.section { font-size: 14px; color: var(--ink); margin: 16px 0 8px; }
+  .hidden { display: none; }
+
+  /* 共用 tooltip */
+  #tooltip {
+    position: fixed; pointer-events: none; z-index: 99; display: none;
+    background: #000; color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 11px; font-size: 12px; line-height: 1.5;
+    max-width: 260px; box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  }
+  #tooltip .t-title { color: var(--ink); font-weight: 600; }
+  #tooltip .t-sub { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<header>
+  <h1>台灣產業趨勢監測與公司情報系統</h1>
+  <span class="spacer"></span>
+  <button class="btn home" onclick="goHome()">⌂ 回到首頁</button>
+</header>
+
+<div class="bar">
+  <label>期間</label>
+  <select id="period" onchange="onPeriodChange()">
+    <option value="7d">近 7 天</option>
+    <option value="30d">近 30 天</option>
+    <option value="90d">近 90 天</option>
+    <option value="ytd">今年迄今 (YTD)</option>
+    <option value="custom">自訂</option>
+  </select>
+  <span id="customRange" class="hidden">
+    <input type="date" id="start"> ~ <input type="date" id="end">
+  </span>
+  <input type="text" id="company" placeholder="公司名稱或統編(公司搜尋)" size="24">
+  <button class="btn primary" onclick="searchCompany()">公司搜尋</button>
+  <button class="btn" onclick="loadOverview()">產業瀏覽</button>
+  <button class="btn" onclick="exportReport()">匯出 Word 報告</button>
+</div>
+
+<main>
+  <div id="status"></div>
+
+  <div id="dashboard">
+    <div class="viz-grid">
+      <div class="panel">
+        <h2>產業聲量樹狀圖</h2>
+        <div class="sub">面積與顏色深淺 = 期間內可歸類報導篇數;點擊區塊可篩選該產業</div>
+        <div id="treemap"></div>
+      </div>
+      <div class="panel">
+        <h2>熱門關鍵字文字雲</h2>
+        <div class="sub">字體大小 = 期間內提及該詞之報導篇數;顏色 = 該詞最常出現的產業</div>
+        <div id="wordcloud"></div>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div id="content"></div>
+</main>
+
+<div id="tooltip"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentIndustry = "";
+
+/* 產業 → 固定類別色(前 8 大用類別色、其餘以弱化灰標示,身分由文字標籤承載) */
+const INDUSTRY_COLORS = {
+  "高科技製造業": "var(--c1)", "金融業": "var(--c2)", "資通訊業": "var(--c3)",
+  "政府教育單位": "var(--c4)", "醫療保健業": "var(--c5)", "傳統製造業": "var(--c6)",
+  "批發零售業": "var(--c7)", "服務業": "var(--c8)",
+  "保險業": "#898781", "住宿及餐飲業": "#898781", "專業科學及技術服務業": "#898781",
+};
+/* 樹狀圖連續色階(藍,淺→深 = 少→多;深色模式 ordinal 下限 step 600) */
+const SEQ = ["#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95"];
+
+function onPeriodChange() {
+  $("customRange").classList.toggle("hidden", $("period").value !== "custom");
+  if ($("period").value !== "custom") loadOverview();
+}
+function periodQS() {
+  const p = $("period").value;
+  let qs = "period=" + p;
+  if (p === "custom") qs += "&start=" + $("start").value + "&end=" + $("end").value;
+  return qs;
+}
+function goHome() {
+  currentIndustry = "";
+  $("period").value = "7d";
+  $("customRange").classList.add("hidden");
+  $("company").value = "";
+  loadOverview();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- 共用 tooltip ---------- */
+const tip = $("tooltip");
+function showTip(ev, html) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  moveTip(ev);
+}
+function moveTip(ev) {
+  const pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  const r = tip.getBoundingClientRect();
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - pad;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - pad;
+  tip.style.left = x + "px"; tip.style.top = y + "px";
+}
+function hideTip() { tip.style.display = "none"; }
+
+/* ---------- 總覽載入 ---------- */
+async function loadOverview() {
+  $("status").textContent = "載入中…";
+  $("dashboard").style.display = "";
+  const qs = periodQS() + (currentIndustry ? "&industry=" + encodeURIComponent(currentIndustry) : "");
+  const [r1, r2] = await Promise.all([
+    fetch("/api/industries?" + qs),
+    fetch("/api/keywords?" + qs),
+  ]);
+  const d = await r1.json();
+  const kw = await r2.json();
+  $("status").textContent =
+    `期間 ${d.start} ~ ${d.end},共 ${d.articles.length} 筆` +
+    (currentIndustry ? `(篩選:${currentIndustry})` : "(顯示前 300 筆)");
+  renderChips(d);
+  renderTreemap(d.counts);
+  renderWordcloud(kw.keywords);
+  $("content").innerHTML = d.articles.map(cardHTML).join("") ||
+    "<p>此期間尚無資料。請先執行 <code>python main.py fetch</code> 抓取。</p>";
+}
+
+function pick(i) { currentIndustry = i; loadOverview(); }
+
+function renderChips(d) {
+  const total = Object.values(d.counts).reduce((a, b) => a + b, 0);
+  const chips = [
+    `<span class="chip ${currentIndustry === "" ? "active" : ""}" onclick="pick('')">
+       <span class="dot" style="background:var(--ink-2)"></span>全部 (${total})</span>`,
+  ].concat(d.industries.map(i =>
+    `<span class="chip ${currentIndustry === i ? "active" : ""}" onclick="pick('${i}')">
+       <span class="dot" style="background:${INDUSTRY_COLORS[i] || "var(--muted)"}"></span>
+       ${i} (${d.counts[i] || 0})</span>`));
+  $("chips").innerHTML = chips.join("");
+}
+
+/* ---------- 樹狀圖(squarified treemap,面積+色階=篇數) ---------- */
+function renderTreemap(counts) {
+  const el = $("treemap");
+  el.innerHTML = "";
+  const data = Object.entries(counts).filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (!data.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間無可歸類資料。</p>";
+    return;
+  }
+  const W = el.clientWidth, H = el.clientHeight;
+  if (W < 120) {                       // 版面尚未完成排版時延後重繪
+    setTimeout(() => renderTreemap(counts), 200);
+    return;
+  }
+  const total = data.reduce((s, [, v]) => s + v, 0);
+  const max = data[0][1], min = data[data.length - 1][1];
+  const rects = squarify(data.map(([k, v]) => ({ key: k, value: v })), 0, 0, W, H);
+  for (const r of rects) {
+    const t = max === min ? 1 : (r.item.value - min) / (max - min);
+    const fill = SEQ[Math.round(t * (SEQ.length - 1))];
+    const dark = t > 0.45;                       // 深底配白字、淺底配黑字
+    const div = document.createElement("div");
+    div.className = "tm-block";
+    div.style.cssText =
+      `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${fill};`;
+    const pct = (r.item.value / total * 100).toFixed(1);
+    if (r.w > 66 && r.h > 34) {
+      div.innerHTML =
+        `<span class="tm-label" style="color:${dark ? "#fff" : "#0b0b0b"}">
+           <span class="tm-name">${r.item.key}</span>
+           <span class="tm-count">${r.item.value} 篇</span></span>`;
+    }
+    div.onmousemove = ev => showTip(ev,
+      `<div class="t-title">${r.item.key}</div>
+       <div class="t-sub">${r.item.value} 篇報導 · 佔 ${pct}%</div>
+       <div class="t-sub">點擊可篩選此產業</div>`);
+    div.onmouseleave = hideTip;
+    div.onclick = () => { hideTip(); pick(r.item.key); };
+    el.appendChild(div);
+  }
+}
+
+/* squarified treemap 簡化實作:逐列排版,追求近方形區塊 */
+function squarify(items, x, y, w, h) {
+  const out = [];
+  const total = items.reduce((s, it) => s + it.value, 0);
+  let rest = items.slice(), rx = x, ry = y, rw = w, rh = h, restVal = total;
+  while (rest.length) {
+    const horizontal = rw >= rh;
+    const side = horizontal ? rh : rw;
+    let row = [rest[0]], rowVal = rest[0].value;
+    const area = v => v / restVal * rw * rh;
+    const worst = (rv, n) => {
+      const len = rv / restVal * (horizontal ? rw * rh : rw * rh) / side;
+      let worstRatio = 0;
+      for (const it of row) {
+        const cell = area(it.value) / len;
+        worstRatio = Math.max(worstRatio, Math.max(len / cell, cell / len));
+      }
+      return worstRatio;
+    };
+    let cur = worst(rowVal, row.length);
+    for (let i = 1; i < rest.length; i++) {
+      row.push(rest[i]);
+      const nv = rowVal + rest[i].value;
+      const nw = worst(nv, row.length);
+      if (nw > cur) { row.pop(); break; }
+      rowVal = nv; cur = nw;
+    }
+    const len = rowVal / restVal * rw * rh / side;
+    let off = 0;
+    for (const it of row) {
+      const cell = (it.value / rowVal) * side;
+      out.push(horizontal
+        ? { item: it, x: rx, y: ry + off, w: len, h: cell }
+        : { item: it, x: rx + off, y: ry, w: cell, h: len });
+      off += cell;
+    }
+    if (horizontal) { rx += len; rw -= len; } else { ry += len; rh -= len; }
+    rest = rest.slice(row.length);
+    restVal = rest.reduce((s, it) => s + it.value, 0) || 1;
+  }
+  return out;
+}
+
+/* ---------- 文字雲(字級=詞頻,顏色=該詞主要產業) ---------- */
+function renderWordcloud(words) {
+  const el = $("wordcloud");
+  el.innerHTML = "";
+  if (!words || !words.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間無足夠資料。</p>";
+    return;
+  }
+  const max = words[0].count, min = words[words.length - 1].count;
+  for (const w of words) {
+    const t = max === min ? 1 : (w.count - min) / (max - min);
+    const size = Math.round(13 + Math.sqrt(t) * 30);          // 13px ~ 43px
+    const color = w.industry ? (INDUSTRY_COLORS[w.industry] || "var(--ink-2)") : "var(--ink-2)";
+    const span = document.createElement("span");
+    span.className = "wc-word";
+    span.style.cssText = `font-size:${size}px;color:${color};font-weight:${t > 0.5 ? 700 : 500};`;
+    span.textContent = w.word;
+    span.onmousemove = ev => showTip(ev,
+      `<div class="t-title">${w.word}</div>
+       <div class="t-sub">${w.count} 篇報導提及</div>` +
+      (w.industry ? `<div class="t-sub">主要出現於:${w.industry}</div>` : ""));
+    span.onmouseleave = hideTip;
+    el.appendChild(span);
+  }
+}
+
+/* ---------- 文章卡片 ---------- */
+function cardHTML(a) {
+  const c = INDUSTRY_COLORS[a.industry] || "var(--grid)";
+  return `<div class="card" style="border-left-color:${c}">
+    <h3><a href="${a.url}" target="_blank" rel="noopener">${a.title}</a>
+      ${a.industry ? `<span class="tag" style="color:${c};border-color:${c}">${a.industry}</span>` : ""}</h3>
+    <div class="meta">${a.source} | ${(a.published_at || "日期不明").slice(0, 16)}</div>
+    ${a.summary ? `<div class="summary">${a.summary.slice(0, 160)}…</div>` : ""}
+  </div>`;
+}
+
+/* ---------- 公司搜尋 ---------- */
+async function searchCompany() {
+  const name = $("company").value.trim();
+  if (!name) { alert("請輸入公司名稱或統一編號"); return; }
+  $("status").textContent = "查詢中(含商工登記,約需數秒)…";
+  $("dashboard").style.display = "none";
+  const r = await fetch(`/api/company?name=${encodeURIComponent(name)}&` + periodQS());
+  const d = await r.json();
+  let html = `<h2 class="section">公司情報:${d.name}(期間 ${d.start} ~ ${d.end})</h2>`;
+  html += `<h3 class="section">商工登記資料</h3>`;
+  if (d.registry.results.length) {
+    for (const c of d.registry.results.slice(0, 3)) {
+      html += '<div class="card"><table class="reg">' +
+        Object.entries(c).map(([k, v]) => `<tr><td width="130">${k}</td><td>${v || "—"}</td></tr>`).join("") +
+        "</table></div>";
+    }
+  } else {
+    html += `<div class="note">資料不足:未能自動取得商工登記資料。</div>`;
+  }
+  if (d.registry.note) html += `<div class="note">${d.registry.note}</div>`;
+  html += `<h3 class="section">相關報導(${d.news.length} 筆)</h3>`;
+  html += d.news.map(cardHTML).join("") || `<div class="note">資料不足:期間內無相關報導。</div>`;
+  if (d.site_news.length) {
+    html += `<h3 class="section">官網公告(${d.site_news.length} 筆)</h3>` + d.site_news.map(cardHTML).join("");
+  }
+  if (d.site_note) html += `<div class="note">${d.site_note}</div>`;
+  $("status").textContent = "";
+  $("content").innerHTML = html;
+}
+
+function exportReport() {
+  const company = $("company").value.trim();
+  let url = "/api/export?" + periodQS();
+  if (company) url += "&company=" + encodeURIComponent(company);
+  $("status").textContent = "報告產出中,完成後將自動下載…";
+  window.location = url;
+  setTimeout(() => $("status").textContent = "", 8000);
+}
+
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(loadOverview, 300);
+});
+
+loadOverview();
+</script>
+</body>
+</html>
