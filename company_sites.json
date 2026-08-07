@@ -1,4 +1,14 @@
 {
-  "台積電": {"type": "html", "url": "https://pr.tsmc.com/chinese/latest-news", "selector": "a"},
-  "華碩": {"type": "html", "url": "https://www.asus.com/tw/news/", "selector": "a"}
+  "華碩": {
+    "type": "html",
+    "url": "https://www.asus.com/tw/news/",
+    "link_pattern": "/tw/news/",
+    "strip_texts": ["Read more", "Tech News & Events", "Events", "Tech News"],
+    "date_regex": "([A-Z][a-z]{2} \\d{1,2}, \\d{4})",
+    "date_format": "%b %d, %Y"
+  },
+  "台積電": {
+    "disabled": true,
+    "note": "pr.tsmc.com 之 robots.txt 不允許程式抓取,依規範不抓取;請人工查閱 https://pr.tsmc.com/chinese/latest-news"
+  }
 }

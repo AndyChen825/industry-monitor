@@ -88,8 +88,8 @@ def query_articles(conn, start_date=None, end_date=None, industry=None, keyword=
         sql += " AND industry = ?"
         args.append(industry)
     if keyword:
-        sql += " AND (title LIKE ? OR summary LIKE ?)"
-        args.extend([f"%{keyword}%", f"%{keyword}%"])
+        sql += " AND (title LIKE ? OR summary LIKE ? OR source LIKE ?)"
+        args.extend([f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"])
     sql += " ORDER BY published_at DESC LIMIT ?"
     args.append(limit)
     return [dict(r) for r in conn.execute(sql, args).fetchall()]

@@ -2,8 +2,9 @@ name: weekly-update
 
 on:
   schedule:
-    # 每週一 12:00(台北時間,UTC+8)= 週一 04:00 UTC
-    - cron: "0 4 * * 1"
+    # 每天 12:00(台北時間,UTC+8)= 04:00 UTC 抓取資料;
+    # Word 週報由 static_build.py 僅於週一產出
+    - cron: "0 4 * * *"
   workflow_dispatch: {}   # 允許在 GitHub 網頁上手動觸發
 
 permissions:

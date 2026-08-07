@@ -213,7 +213,8 @@ function filterArticles(startS, endS, industry, keyword) {
   return ALL.filter(x =>
     x.published_at >= startS && x.published_at <= endFull &&
     (!industry || x.industry === industry) &&
-    (!keyword || x.title.includes(keyword) || (x.summary || "").includes(keyword)));
+    (!keyword || x.title.includes(keyword) || (x.summary || "").includes(keyword) ||
+     (x.source || "").includes(keyword)));
 }
 
 function loadOverview() {

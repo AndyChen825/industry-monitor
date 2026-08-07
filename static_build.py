@@ -64,15 +64,21 @@ def build():
     (DATA_DIR / "keywords.json").write_text(
         json.dumps(keywords, ensure_ascii=False), encoding="utf-8")
 
-    # 當週 Word 報告(近 7 天)
-    from report.word_report import build_report
-    start_s = (now - timedelta(days=7)).strftime("%Y-%m-%d")
-    end_s = now.strftime("%Y-%m-%d")
-    week_arts = query_articles(conn, start_date=start_s, end_date=end_s, limit=2000)
+    # 當週 Word 報告:僅於週一產出(或設 FORCE_REPORT=1 強制、或尚無任何報告時)
+    import os
+    existing = list(REPORTS_DIR.glob("*.docx"))
+    if now.weekday() == 0 or os.environ.get("FORCE_REPORT") == "1" or not existing:
+        from report.word_report import build_report
+        start_s = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        end_s = now.strftime("%Y-%m-%d")
+        week_arts = query_articles(conn, start_date=start_s, end_date=end_s, limit=2000)
+        report_name = f"台灣產業趨勢監測週報_{start_s}_{end_s}.docx"
+        build_report(week_arts, start_s, end_s, fetch_status=status,
+                     title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name)
+        print(f"週報已產出:{report_name}")
+    else:
+        print("非週一,僅更新資料,不產出新週報")
     conn.close()
-    report_name = f"台灣產業趨勢監測週報_{start_s}_{end_s}.docx"
-    build_report(week_arts, start_s, end_s, fetch_status=status,
-                 title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name)
 
     # 只保留最近 N 份報告
     all_reports = sorted(REPORTS_DIR.glob("*.docx"),
