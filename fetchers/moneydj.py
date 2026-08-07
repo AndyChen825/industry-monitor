@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""MoneyDJ理財網 — 獨立 fetcher 模組。"""
+"""MoneyDJ理財網 — 獨立 fetcher 模組。 限制:網站 TLS 憑證鏈缺少 Subject Key Identifier,Python 預設驗證失敗;暫無法自動抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "MoneyDJ理財網"
 SOURCE_TYPE = "財經專業"
-FEEDS = ['https://www.moneydj.com/KMDJ/RssCenter.aspx?svc=NR&fno=1&arg=X0000000']
-NOTE = ""
+FEEDS = []
+NOTE = "網站 TLS 憑證鏈缺少 Subject Key Identifier,Python 預設驗證失敗;暫無法自動抓取"
 
 
 def fetch():

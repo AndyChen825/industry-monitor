@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Yahoo奇摩新聞 — 獨立 fetcher 模組。 限制:Yahoo 為聚合媒體,原始出處以文章內標示為準"""
+"""Yahoo奇摩新聞 — 獨立 fetcher 模組。 Yahoo 為聚合媒體,原始出處以文章內標示為準"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "Yahoo奇摩新聞"
 SOURCE_TYPE = "綜合新聞"
-FEEDS = ['https://tw.news.yahoo.com/rss/finance', 'https://tw.news.yahoo.com/rss/tech']
+FEEDS = ['https://tw.news.yahoo.com/rss/finance', 'https://tw.news.yahoo.com/rss']
 NOTE = "Yahoo 為聚合媒體,原始出處以文章內標示為準"
 
 

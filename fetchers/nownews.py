@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""NOWnews — 獨立 fetcher 模組。"""
+"""NOWnews — 獨立 fetcher 模組。 限制:官網改版後已無公開 RSS(/feed 回應 404),2026-08 實測確認;無法自動抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "NOWnews"
 SOURCE_TYPE = "綜合新聞"
-FEEDS = ['https://www.nownews.com/feed/']
-NOTE = ""
+FEEDS = []
+NOTE = "官網改版後已無公開 RSS(/feed 回應 404),2026-08 實測確認;無法自動抓取"
 
 
 def fetch():

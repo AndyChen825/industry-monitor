@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""數位時代 — 獨立 fetcher 模組。"""
+"""數位時代 — 獨立 fetcher 模組。 限制:官網無公開 RSS(常見路徑均 404),2026-08 實測確認;無法自動抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "數位時代"
 SOURCE_TYPE = "科技新創"
-FEEDS = ['https://www.bnext.com.tw/rss']
-NOTE = ""
+FEEDS = []
+NOTE = "官網無公開 RSS(常見路徑均 404),2026-08 實測確認;無法自動抓取"
 
 
 def fetch():

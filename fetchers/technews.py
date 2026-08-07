@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""科技新報 — 獨立 fetcher 模組。"""
+"""科技新報 — 獨立 fetcher 模組。 限制:網站 robots.txt 不允許程式抓取,依規範不抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "科技新報"
 SOURCE_TYPE = "科技新創"
-FEEDS = ['https://technews.tw/feed/']
-NOTE = ""
+FEEDS = []
+NOTE = "網站 robots.txt 不允許程式抓取,依規範不抓取"
 
 
 def fetch():

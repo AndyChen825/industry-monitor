@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""聯合新聞網 — 獨立 fetcher 模組。 限制:UDN RSS 分類頻道,若失效需至 https://udn.com/rssfeed/ 更新網址"""
+"""聯合新聞網 — 獨立 fetcher 模組。 限制:RSS 服務回傳空白項目(頻道疑已停用),2026-08 實測確認;財經內容由「經濟日報網」來源涵蓋"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "聯合新聞網"
 SOURCE_TYPE = "綜合新聞"
-FEEDS = ['https://udn.com/rssfeed/news/2/6644?ch=news', 'https://udn.com/rssfeed/news/2/6638?ch=news', 'https://udn.com/rssfeed/news/2/7226?ch=news']
-NOTE = "UDN RSS 分類頻道,若失效需至 https://udn.com/rssfeed/ 更新網址"
+FEEDS = []
+NOTE = "RSS 服務回傳空白項目(頻道疑已停用),2026-08 實測確認;財經內容由「經濟日報網」來源涵蓋"
 
 
 def fetch():

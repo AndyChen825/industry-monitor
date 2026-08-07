@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""天下雜誌 — 獨立 fetcher 模組。 限制:天下雜誌全文多為訂閱制,僅取公開標題與摘要"""
+"""天下雜誌 — 獨立 fetcher 模組。 限制:網站 robots.txt 不允許程式抓取,依規範不抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "天下雜誌"
 SOURCE_TYPE = "深度雜誌"
-FEEDS = ['https://www.cw.com.tw/RSS/cw_all.xml']
-NOTE = "天下雜誌全文多為訂閱制,僅取公開標題與摘要"
+FEEDS = []
+NOTE = "網站 robots.txt 不允許程式抓取,依規範不抓取"
 
 
 def fetch():

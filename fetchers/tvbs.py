@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""TVBS — 獨立 fetcher 模組。 限制:TVBS RSS 若失效需至官網確認"""
+"""TVBS — 獨立 fetcher 模組。 限制:RSS 路徑已移除(rss/money、rss/tech 均 404),無公開 RSS;無法自動抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "TVBS"
 SOURCE_TYPE = "綜合新聞"
-FEEDS = ['https://news.tvbs.com.tw/rss/money', 'https://news.tvbs.com.tw/rss/tech']
-NOTE = "TVBS RSS 若失效需至官網確認"
+FEEDS = []
+NOTE = "RSS 路徑已移除(rss/money、rss/tech 均 404),無公開 RSS;無法自動抓取"
 
 
 def fetch():

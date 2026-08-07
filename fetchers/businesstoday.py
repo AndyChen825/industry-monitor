@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""今周刊 — 獨立 fetcher 模組。 限制:今周刊部分全文為訂閱制,僅取公開標題與摘要"""
+"""今周刊 — 獨立 fetcher 模組。 限制:官網無公開 RSS(/rss 回傳一般網頁),2026-08 實測確認;無法自動抓取"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "今周刊"
 SOURCE_TYPE = "深度雜誌"
-FEEDS = ['https://www.businesstoday.com.tw/rss']
-NOTE = "今周刊部分全文為訂閱制,僅取公開標題與摘要"
+FEEDS = []
+NOTE = "官網無公開 RSS(/rss 回傳一般網頁),2026-08 實測確認;無法自動抓取"
 
 
 def fetch():

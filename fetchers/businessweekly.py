@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""商業周刊 — 獨立 fetcher 模組。 限制:商周多數全文為訂閱制,僅取公開標題與摘要"""
+"""商業周刊 — 獨立 fetcher 模組。 商周多數全文為訂閱制,僅取公開標題+摘要;feedsec 端點 2026-08 實測可用"""
 from fetchers.rss_fetcher import fetch_feeds
 
 NAME = "商業周刊"
 SOURCE_TYPE = "深度雜誌"
-FEEDS = ['https://www.businessweekly.com.tw/RSS/Rss.aspx']
-NOTE = "商周多數全文為訂閱制,僅取公開標題與摘要"
+FEEDS = ['https://www.businessweekly.com.tw/feedsec.aspx?feedid=2&channelid=4', 'https://www.businessweekly.com.tw/feedsec.aspx?feedid=1&channelid=4']
+NOTE = "商周多數全文為訂閱制,僅取公開標題+摘要;feedsec 端點 2026-08 實測可用"
 
 
 def fetch():
