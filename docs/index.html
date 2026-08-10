@@ -371,7 +371,9 @@ function renderCompanyTreemap(periodArticles) {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間報導中未偵測到已知公司名稱(多為不含特定公司之產業新聞)。</p>";
     return;
   }
-  // 前 15 大之外合併為「其他」,避免大量無法標示文字的細小區塊
+  // 前 15 大之外合併為「其他」,避免大量無法標示文字的細小區塊。
+  // 「其他」的面積固定為最小格(不依實際合計篇數,避免壓過主要公司)。
+  const trueTotal = Object.values(counts).reduce((a, b) => a + b, 0);
   const TOP_N = 15;
   let restInfo = null;
   if (data.length > TOP_N) {
@@ -379,13 +381,12 @@ function renderCompanyTreemap(periodArticles) {
     restInfo = { count: rest.length, sum: rest.reduce((s, [, v]) => s + v, 0),
                  names: rest.slice(0, 8).map(([k]) => k) };
     data = data.slice(0, TOP_N);
-    data.push(["__other__", restInfo.sum]);
-    data.sort((x, y) => y[1] - x[1]);
+    data.push(["__other__", Math.max(1, Math.round(data[data.length - 1][1] * 0.8))]);
   }
   const W = el.clientWidth, H = el.clientHeight;
   if (W < 120) { setTimeout(() => renderCompanyTreemap(periodArticles), 200); return; }
-  const total = data.reduce((s, [, v]) => s + v, 0);
-  const max = data[0][1], min = data[data.length - 1][1];
+  const vals = data.filter(([k]) => k !== "__other__").map(([, v]) => v);
+  const max = vals[0], min = vals[vals.length - 1];
   const rects = squarify(data.map(([k, v]) => ({ key: k, value: v })), 0, 0, W, H);
   for (const r of rects) {
     const isOther = r.item.key === "__other__";
@@ -398,16 +399,17 @@ function renderCompanyTreemap(periodArticles) {
       (isOther
         ? "background:rgba(137,135,129,0.18);border-color:rgba(137,135,129,0.4);cursor:default;"
         : `background:${COMPANY_GREEN(t)};`);
-    const pct = (r.item.value / total * 100).toFixed(1);
+    const displayCount = isOther ? restInfo.sum : r.item.value;
+    const pct = (displayCount / trueTotal * 100).toFixed(1);
     if (r.w > 50 && r.h > 26) {
       div.innerHTML = `<span class="tm-label" style="color:${isOther ? "var(--ink-2)" : "#fff"}">
         <span class="tm-name">${label}</span>
-        <span class="tm-count">${r.item.value} 篇</span></span>`;
+        <span class="tm-count">${displayCount} 篇</span></span>`;
     }
     if (isOther) {
       div.onmousemove = ev => showTip(ev,
         `<div class="t-title">其他 ${restInfo.count} 家</div>
-         <div class="t-sub">合計 ${r.item.value} 篇</div>
+         <div class="t-sub">合計 ${restInfo.sum} 篇(面積不代表篇數)</div>
          <div class="t-sub">${restInfo.names.join("、")}${restInfo.count > 8 ? "…" : ""}</div>`);
       div.onmouseleave = hideTip;
     } else {
