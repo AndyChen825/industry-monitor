@@ -433,17 +433,17 @@ function renderWordcloud() {
   const el = $("wordcloud");
   el.innerHTML = "";
   const p = $("period").value;
-  const words = KEYWORDS[p];
-  const notes = [];
   if (p === "custom") {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>文字雲僅支援預設期間(近 7/30/90 天、YTD)。</p>";
     return;
   }
-  if (currentIndustry) notes.push("文字雲為全產業統計,不隨產業篩選變動");
+  const group = KEYWORDS[p] || {};
+  // 相容舊版格式(陣列 = 全產業);新版為 {all, 各產業} 分組
+  const words = Array.isArray(group) ? group : (group[currentIndustry || "all"] || []);
   $("wcSub").textContent = "字體大小 = 期間內提及該詞之報導篇數;顏色 = 該詞最常出現的產業" +
-    (notes.length ? "(" + notes.join(";") + ")" : "");
-  if (!words || !words.length) {
-    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間無足夠資料。</p>";
+    `(統計範圍:${currentIndustry || "全部產業"};點擊詞彙可查看相關報導)`;
+  if (!words.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間該產業無足夠資料。</p>";
     return;
   }
   const max = words[0].count, min = words[words.length - 1].count;

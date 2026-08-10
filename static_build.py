@@ -11,7 +11,7 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from config import BASE_DIR, COMPANY_WATCHLIST
+from config import BASE_DIR, COMPANY_WATCHLIST, INDUSTRIES
 from db import get_conn, query_articles, latest_fetch_status
 from analysis.keywords import top_keywords
 from fetchers.base import http_get
@@ -136,11 +136,17 @@ def build():
         "90d": now - timedelta(days=90),
         "ytd": now.replace(month=1, day=1, hour=0, minute=0, second=0),
     }
+    # 每期間一組全產業詞頻 + 每產業各一組(供產業籤切換文字雲)
     keywords = {}
     for key, start_dt in presets.items():
         start_s = start_dt.strftime("%Y-%m-%d")
         subset = [a for a in articles if (a.get("published_at") or "") >= start_s]
-        keywords[key] = top_keywords(subset, limit=40)
+        group = {"all": top_keywords(subset, limit=40)}
+        for ind in INDUSTRIES:
+            sub_i = [a for a in subset if a.get("industry") == ind]
+            if sub_i:
+                group[ind] = top_keywords(sub_i, limit=40)
+        keywords[key] = group
     (DATA_DIR / "keywords.json").write_text(
         json.dumps(keywords, ensure_ascii=False), encoding="utf-8")
 
