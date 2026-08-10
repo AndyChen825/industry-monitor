@@ -58,7 +58,7 @@
   .tm-count { font-size: 11px; opacity: .82; }
   #wordcloud { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
                gap: 6px 14px; min-height: 340px; padding: 8px 4px; align-content: center; }
-  .wc-word { cursor: default; line-height: 1.25; transition: filter .12s; }
+  .wc-word { cursor: pointer; line-height: 1.25; transition: filter .12s; }
   .wc-word:hover { filter: brightness(1.3); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
   .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px;
@@ -457,8 +457,10 @@ function renderWordcloud() {
     span.textContent = w.word;
     span.onmousemove = ev => showTip(ev,
       `<div class="t-title">${w.word}</div><div class="t-sub">${w.count} 篇報導提及</div>` +
-      (w.industry ? `<div class="t-sub">主要出現於:${w.industry}</div>` : ""));
+      (w.industry ? `<div class="t-sub">主要出現於:${w.industry}</div>` : "") +
+      `<div class="t-sub">點擊查看相關報導</div>`);
     span.onmouseleave = hideTip;
+    span.onclick = () => { hideTip(); showKeywordResults(w.word); };
     el.appendChild(span);
   }
 }
@@ -472,6 +474,20 @@ function cardHTML(a) {
     <div class="meta">${a.source} | ${(a.published_at || "日期不明").slice(0, 16)}</div>
     ${a.summary ? `<div class="summary">${a.summary.slice(0, 160)}…</div>` : ""}
   </div>`;
+}
+
+/* ---------- 關鍵字結果(文字雲點擊) ---------- */
+function showKeywordResults(word) {
+  $("dashboard").style.display = "none";
+  const [s, e] = resolvePeriod();
+  const news = filterArticles(s, e, "", word);
+  let html = `<h2 class="section">關鍵字「${word}」相關報導(期間 ${s} ~ ${e},共 ${news.length} 筆)</h2>`;
+  html += `<p style="font-size:13px;color:var(--muted)">點右上「⌂ 回到首頁」返回總覽。</p>`;
+  html += news.slice(0, 200).map(cardHTML).join("") ||
+    `<div class="note">資料不足:期間內無相關報導。</div>`;
+  $("status").textContent = "";
+  $("content").innerHTML = html;
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ---------- 公司搜尋(瀏覽器端關鍵字比對) ---------- */
