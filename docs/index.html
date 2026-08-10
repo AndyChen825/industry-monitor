@@ -354,8 +354,8 @@ function renderCompanyTreemap(periodArticles) {
   panel.style.display = "";
   $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
   $("cpSub").textContent =
-    "統計期間內所有報導(不限產業分類)提及各公司之篇數;點擊區塊可查看該公司相關報導。" +
-    "公司清單可於 config.py 之 COMPANY_WATCHLIST 擴充。";
+    "依全體上市櫃公司名錄+自訂品牌清單,自動比對期間內報導之標題與內容,統計各公司被提及篇數(顯示前 30 大);" +
+    "點擊區塊可查看該公司相關報導。同名詞彙可能造成少量誤計。";
   el.innerHTML = "";
   const counts = {};
   const matchers = Object.entries(wl[industry]).map(([name, aliases]) =>
@@ -366,9 +366,9 @@ function renderCompanyTreemap(periodArticles) {
       if (match(text)) counts[name] = (counts[name] || 0) + 1;
     }
   }
-  const data = Object.entries(counts).sort((x, y) => y[1] - x[1]);
+  const data = Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 30);
   if (!data.length) {
-    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間未偵測到觀察清單公司之聲量。</p>";
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間報導中未偵測到已知公司名稱(多為不含特定公司之產業新聞)。</p>";
     return;
   }
   const W = el.clientWidth, H = el.clientHeight;
