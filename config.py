@@ -141,6 +141,7 @@ SOURCE_MODULES = [
     ("bnext",          "數位時代",      "科技新創"),
     ("technews",       "科技新報",      "科技新創"),
     ("official_sites", "企業官網",      "企業官網"),
+    ("twse_mops",      "證交所重大訊息", "官方公告"),
 ]
 
 # 商工登記(公司情報)另由 fetchers/findbiz.py 提供,不在新聞來源清單內。

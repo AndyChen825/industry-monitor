@@ -77,9 +77,10 @@ powershell -ExecutionPolicy Bypass -File scheduler_setup\setup_windows.ps1
 
 | 類型 | 來源 | 方式 | 狀態(2026-08 實測) |
 |---|---|---|---|
-| 綜合新聞 | 中央社、ETtoday、自由時報、壹蘋、Yahoo奇摩 | RSS | ✅ 可自動抓取 |
-| 綜合新聞 | 中時 | — | ❌ robots.txt 不允許程式抓取,依規範不抓取 |
-| 綜合新聞 | NOWnews、TVBS、三立 | — | ❌ 官網已無公開 RSS,無法自動抓取 |
+| 綜合新聞 | 中央社、ETtoday、自由時報、壹蘋 | RSS | ✅ 可自動抓取 |
+| 綜合新聞 | Yahoo奇摩 | RSS+出處還原 | ✅ 新文章解析文章頁 JSON-LD 還原原始媒體,標為「媒體名(Yahoo轉載)」 |
+| 綜合新聞 | 中時 | — | ❌ 官網 robots.txt 不允許;轉載至 Yahoo 之內容可經出處還原取得 |
+| 綜合新聞 | NOWnews、TVBS、三立 | — | ❌ 官網無公開 RSS;轉載至 Yahoo 之內容可經出處還原取得 |
 | 綜合新聞 | 風傳媒 | — | ❌ RSS 為會員限定,無法自動抓取 |
 | 綜合新聞 | 聯合新聞網 | — | ❌ RSS 服務回傳空白項目;財經內容由經濟日報涵蓋 |
 | 綜合新聞 | LINE Today | — | ❌ 無公開 RSS 且限制爬取,僅提供入口連結 |
@@ -87,8 +88,10 @@ powershell -ExecutionPolicy Bypass -File scheduler_setup\setup_windows.ps1
 | 財經專業 | 工商時報 | — | ❌ robots.txt 不允許程式抓取 |
 | 財經專業 | MoneyDJ | — | ❌ 網站憑證鏈異常,暫無法抓取 |
 | 深度雜誌 | 商業周刊、遠見 | RSS | ✅ 可自動抓取(付費牆內容僅公開標題+摘要) |
-| 深度雜誌 | 今周刊、天下 | — | ❌ 無公開 RSS / robots.txt 不允許 |
-| 科技新創 | 數位時代、科技新報 | — | ❌ 無公開 RSS / robots.txt 不允許 |
+| 深度雜誌 | 今周刊、天下 | — | ❌ 無公開 RSS / robots.txt 不允許;轉載至 Yahoo 之內容可經出處還原取得 |
+| 科技新創 | 數位時代、科技新報 | — | ❌ 無公開 RSS / robots.txt 不允許;轉載至 Yahoo 之內容可經出處還原取得 |
+| 官方公告 | 證交所重大訊息(OpenAPI) | API | ✅ 上市公司每日重大訊息(含台積電、華碩官方公告),法定揭露管道 |
+| 企業官網 | 華碩(company_sites.json 登錄制) | HTML | ✅ 可自動抓取;台積電新聞室 robots.txt 不允許,官方訊息由證交所重大訊息涵蓋 |
 | 公司登記 | 經濟部 GCIS 開放資料 API | API | 平臺憑證鏈異常時預設回退為[商工登記人工查詢連結](https://findbiz.nat.gov.tw/fts/query/QueryBar/queryInit.do)(網頁版含驗證碼,不做自動化);詳見 `config.py` 之 `GCIS_ALLOW_INSECURE_SSL` 說明 |
 | 企業官網 | company_sites.json 登錄制 | HTML/RSS | 需逐家登錄新聞稿頁面網址;未登錄公司回報限制訊息 |
 
