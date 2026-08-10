@@ -49,6 +49,10 @@
               outline: 2px solid var(--surface); transition: filter .12s; }
   .tm-block:hover { filter: brightness(1.18); }
   .tm-label { position: absolute; left: 7px; top: 5px; right: 6px; line-height: 1.35; }
+  /* 公司樹狀圖:文字置中版 */
+  .tm-block.tm-center { display: flex; align-items: center; justify-content: center;
+                        text-align: center; border: 1px solid rgba(16,185,129,0.45); }
+  .tm-block.tm-center .tm-label { position: static; left: auto; top: auto; right: auto; padding: 0 6px; }
   .tm-name { font-size: 12px; font-weight: 600; display: block;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tm-count { font-size: 11px; opacity: .82; }
@@ -161,8 +165,8 @@ const INDUSTRY_COLORS = {
   "保險業": "#898781", "住宿及餐飲業": "#898781", "專業科學及技術服務業": "#898781",
 };
 const SEQ = ["#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95"];
-/* 公司樹狀圖用第二組連續色階(橘,淺→深),與產業樹狀圖(藍)區隔 */
-const SEQ2 = ["#f2b795","#efa478","#ea8f5c","#e37742","#d95926","#c14e21","#a8431c","#8e3917"];
+/* 公司樹狀圖:股票行情風格 — 單一綠色以透明度深淺表示聲量 */
+const COMPANY_GREEN = t => `rgba(16,185,129,${(0.15 + t * 0.78).toFixed(2)})`;
 const FINDBIZ_URL = "https://findbiz.nat.gov.tw/fts/query/QueryBar/queryInit.do";
 
 /* ---------- 期間解析(瀏覽器端) ---------- */
@@ -374,14 +378,13 @@ function renderCompanyTreemap(periodArticles) {
   const rects = squarify(data.map(([k, v]) => ({ key: k, value: v })), 0, 0, W, H);
   for (const r of rects) {
     const t = max === min ? 1 : (r.item.value - min) / (max - min);
-    const fill = SEQ2[Math.round(t * (SEQ2.length - 1))];
-    const dark = t > 0.45;
     const div = document.createElement("div");
-    div.className = "tm-block";
-    div.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${fill};`;
+    div.className = "tm-block tm-center";
+    div.style.cssText =
+      `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${COMPANY_GREEN(t)};`;
     const pct = (r.item.value / total * 100).toFixed(1);
     if (r.w > 60 && r.h > 30) {
-      div.innerHTML = `<span class="tm-label" style="color:${dark ? "#fff" : "#0b0b0b"}">
+      div.innerHTML = `<span class="tm-label" style="color:#fff">
         <span class="tm-name">${r.item.key}</span>
         <span class="tm-count">${r.item.value} 篇</span></span>`;
     }
