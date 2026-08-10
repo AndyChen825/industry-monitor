@@ -131,6 +131,11 @@
         <div id="wordcloud"></div>
       </div>
     </div>
+    <div class="panel" id="companyPanel" style="margin-bottom:18px">
+      <h2 id="cpTitle">公司聲量樹狀圖</h2>
+      <div class="sub" id="cpSub"></div>
+      <div id="companyTreemap" style="width:100%;height:300px;position:relative"></div>
+    </div>
     <div class="chips" id="chips"></div>
   </div>
   <div id="content"></div>
@@ -156,6 +161,8 @@ const INDUSTRY_COLORS = {
   "保險業": "#898781", "住宿及餐飲業": "#898781", "專業科學及技術服務業": "#898781",
 };
 const SEQ = ["#86b6ef","#6da7ec","#5598e7","#3987e5","#2a78d6","#256abf","#1c5cab","#184f95"];
+/* 公司樹狀圖用第二組連續色階(橘,淺→深),與產業樹狀圖(藍)區隔 */
+const SEQ2 = ["#f2b795","#efa478","#ea8f5c","#e37742","#d95926","#c14e21","#a8431c","#8e3917"];
 const FINDBIZ_URL = "https://findbiz.nat.gov.tw/fts/query/QueryBar/queryInit.do";
 
 /* ---------- 期間解析(瀏覽器端) ---------- */
@@ -229,6 +236,7 @@ function loadOverview() {
     (currentIndustry ? `(篩選:${currentIndustry})` : "");
   renderChips(counts);
   renderTreemap(counts);
+  renderCompanyTreemap(filterArticles(s, e, "", ""));
   renderWordcloud();
   $("content").innerHTML = arts.slice(0, 300).map(cardHTML).join("") ||
     "<p>此期間尚無資料。</p>";
@@ -325,6 +333,72 @@ function squarify(items, x, y, w, h) {
   return out;
 }
 
+/* ---------- 公司聲量樹狀圖(依產業觀察清單,別名比對) ---------- */
+function aliasMatcher(aliases) {
+  const zh = aliases.filter(a => /[一-鿿]/.test(a));
+  const latin = aliases.filter(a => !/[一-鿿]/.test(a))
+    .map(a => new RegExp("(^|[^A-Za-z0-9])" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^A-Za-z0-9]|$)", "i"));
+  return text => zh.some(a => text.includes(a)) || latin.some(re => re.test(text));
+}
+
+function renderCompanyTreemap(periodArticles) {
+  const panel = $("companyPanel");
+  const el = $("companyTreemap");
+  const wl = META.watchlist || {};
+  const industry = wl[currentIndustry] ? currentIndustry : Object.keys(wl)[0];
+  if (!industry) { panel.style.display = "none"; return; }
+  panel.style.display = "";
+  $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
+  $("cpSub").textContent =
+    "統計期間內所有報導(不限產業分類)提及各公司之篇數;點擊區塊可查看該公司相關報導。" +
+    "公司清單可於 config.py 之 COMPANY_WATCHLIST 擴充。";
+  el.innerHTML = "";
+  const counts = {};
+  const matchers = Object.entries(wl[industry]).map(([name, aliases]) =>
+    [name, aliasMatcher(aliases)]);
+  for (const a of periodArticles) {
+    const text = a.title + " " + (a.summary || "") + " " + (a.source || "");
+    for (const [name, match] of matchers) {
+      if (match(text)) counts[name] = (counts[name] || 0) + 1;
+    }
+  }
+  const data = Object.entries(counts).sort((x, y) => y[1] - x[1]);
+  if (!data.length) {
+    el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間未偵測到觀察清單公司之聲量。</p>";
+    return;
+  }
+  const W = el.clientWidth, H = el.clientHeight;
+  if (W < 120) { setTimeout(() => renderCompanyTreemap(periodArticles), 200); return; }
+  const total = data.reduce((s, [, v]) => s + v, 0);
+  const max = data[0][1], min = data[data.length - 1][1];
+  const rects = squarify(data.map(([k, v]) => ({ key: k, value: v })), 0, 0, W, H);
+  for (const r of rects) {
+    const t = max === min ? 1 : (r.item.value - min) / (max - min);
+    const fill = SEQ2[Math.round(t * (SEQ2.length - 1))];
+    const dark = t > 0.45;
+    const div = document.createElement("div");
+    div.className = "tm-block";
+    div.style.cssText = `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${fill};`;
+    const pct = (r.item.value / total * 100).toFixed(1);
+    if (r.w > 60 && r.h > 30) {
+      div.innerHTML = `<span class="tm-label" style="color:${dark ? "#fff" : "#0b0b0b"}">
+        <span class="tm-name">${r.item.key}</span>
+        <span class="tm-count">${r.item.value} 篇</span></span>`;
+    }
+    div.onmousemove = ev => showTip(ev,
+      `<div class="t-title">${r.item.key}</div>
+       <div class="t-sub">${r.item.value} 篇報導提及 · 佔清單公司總聲量 ${pct}%</div>
+       <div class="t-sub">點擊查看相關報導</div>`);
+    div.onmouseleave = hideTip;
+    div.onclick = () => {
+      hideTip();
+      $("company").value = r.item.key;
+      searchCompany();
+    };
+    el.appendChild(div);
+  }
+}
+
 /* ---------- 文字雲(預先計算之預設期間詞頻) ---------- */
 function renderWordcloud() {
   const el = $("wordcloud");
@@ -372,12 +446,28 @@ function cardHTML(a) {
 }
 
 /* ---------- 公司搜尋(瀏覽器端關鍵字比對) ---------- */
+function findWatchAliases(name) {
+  for (const companies of Object.values(META.watchlist || {})) {
+    if (companies[name]) return companies[name];
+  }
+  return null;
+}
+
 function searchCompany() {
   const name = $("company").value.trim();
   if (!name) { alert("請輸入公司名稱關鍵字"); return; }
   $("dashboard").style.display = "none";
   const [s, e] = resolvePeriod();
-  const news = filterArticles(s, e, "", name);
+  let news;
+  const aliases = findWatchAliases(name);
+  if (aliases) {   // 觀察清單公司:以別名比對(中英文皆涵蓋)
+    const match = aliasMatcher(aliases);
+    const endFull = e + "T23:59:59";
+    news = ALL.filter(x => x.published_at >= s && x.published_at <= endFull &&
+      match(x.title + " " + (x.summary || "") + " " + (x.source || "")));
+  } else {
+    news = filterArticles(s, e, "", name);
+  }
   let html = `<h2 class="section">公司情報:${name}(期間 ${s} ~ ${e})</h2>`;
   html += `<div class="note">商工登記資料(統編、登記地址、資本額、變更紀錄)請至
     <a href="${FINDBIZ_URL}" target="_blank" rel="noopener" style="color:#fab219">

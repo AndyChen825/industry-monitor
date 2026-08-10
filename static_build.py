@@ -11,7 +11,7 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from config import BASE_DIR
+from config import BASE_DIR, COMPANY_WATCHLIST
 from db import get_conn, query_articles, latest_fetch_status
 from analysis.keywords import top_keywords
 
@@ -93,6 +93,7 @@ def build():
         "article_count": len(slim),
         "fetch_status": status,
         "reports": report_files,
+        "watchlist": COMPANY_WATCHLIST,
     }
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
