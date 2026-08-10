@@ -354,8 +354,8 @@ function renderCompanyTreemap(periodArticles) {
   panel.style.display = "";
   $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
   $("cpSub").textContent =
-    "依全體上市櫃公司名錄+自訂品牌清單,自動比對期間內報導之標題與內容,統計各公司被提及篇數(顯示前 30 大);" +
-    "點擊區塊可查看該公司相關報導。同名詞彙可能造成少量誤計。";
+    "依全體上市櫃公司名錄+自訂品牌清單,自動比對期間內報導之標題與內容,統計各公司被提及篇數" +
+    "(顯示前 15 大,其餘合併為「其他」);點擊區塊可查看該公司相關報導。同名詞彙可能造成少量誤計。";
   el.innerHTML = "";
   const counts = {};
   const matchers = Object.entries(wl[industry]).map(([name, aliases]) =>
@@ -366,10 +366,21 @@ function renderCompanyTreemap(periodArticles) {
       if (match(text)) counts[name] = (counts[name] || 0) + 1;
     }
   }
-  const data = Object.entries(counts).sort((x, y) => y[1] - x[1]).slice(0, 30);
+  let data = Object.entries(counts).sort((x, y) => y[1] - x[1]);
   if (!data.length) {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間報導中未偵測到已知公司名稱(多為不含特定公司之產業新聞)。</p>";
     return;
+  }
+  // 前 15 大之外合併為「其他」,避免大量無法標示文字的細小區塊
+  const TOP_N = 15;
+  let restInfo = null;
+  if (data.length > TOP_N) {
+    const rest = data.slice(TOP_N);
+    restInfo = { count: rest.length, sum: rest.reduce((s, [, v]) => s + v, 0),
+                 names: rest.slice(0, 8).map(([k]) => k) };
+    data = data.slice(0, TOP_N);
+    data.push(["__other__", restInfo.sum]);
+    data.sort((x, y) => y[1] - x[1]);
   }
   const W = el.clientWidth, H = el.clientHeight;
   if (W < 120) { setTimeout(() => renderCompanyTreemap(periodArticles), 200); return; }
@@ -377,27 +388,40 @@ function renderCompanyTreemap(periodArticles) {
   const max = data[0][1], min = data[data.length - 1][1];
   const rects = squarify(data.map(([k, v]) => ({ key: k, value: v })), 0, 0, W, H);
   for (const r of rects) {
+    const isOther = r.item.key === "__other__";
+    const label = isOther ? `其他(${restInfo.count}家)` : r.item.key;
     const t = max === min ? 1 : (r.item.value - min) / (max - min);
     const div = document.createElement("div");
     div.className = "tm-block tm-center";
     div.style.cssText =
-      `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;background:${COMPANY_GREEN(t)};`;
+      `left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;` +
+      (isOther
+        ? "background:rgba(137,135,129,0.18);border-color:rgba(137,135,129,0.4);cursor:default;"
+        : `background:${COMPANY_GREEN(t)};`);
     const pct = (r.item.value / total * 100).toFixed(1);
-    if (r.w > 60 && r.h > 30) {
-      div.innerHTML = `<span class="tm-label" style="color:#fff">
-        <span class="tm-name">${r.item.key}</span>
+    if (r.w > 50 && r.h > 26) {
+      div.innerHTML = `<span class="tm-label" style="color:${isOther ? "var(--ink-2)" : "#fff"}">
+        <span class="tm-name">${label}</span>
         <span class="tm-count">${r.item.value} 篇</span></span>`;
     }
-    div.onmousemove = ev => showTip(ev,
-      `<div class="t-title">${r.item.key}</div>
-       <div class="t-sub">${r.item.value} 篇報導提及 · 佔清單公司總聲量 ${pct}%</div>
-       <div class="t-sub">點擊查看相關報導</div>`);
-    div.onmouseleave = hideTip;
-    div.onclick = () => {
-      hideTip();
-      $("company").value = r.item.key;
-      searchCompany();
-    };
+    if (isOther) {
+      div.onmousemove = ev => showTip(ev,
+        `<div class="t-title">其他 ${restInfo.count} 家</div>
+         <div class="t-sub">合計 ${r.item.value} 篇</div>
+         <div class="t-sub">${restInfo.names.join("、")}${restInfo.count > 8 ? "…" : ""}</div>`);
+      div.onmouseleave = hideTip;
+    } else {
+      div.onmousemove = ev => showTip(ev,
+        `<div class="t-title">${label}</div>
+         <div class="t-sub">${r.item.value} 篇報導提及 · 佔清單公司總聲量 ${pct}%</div>
+         <div class="t-sub">點擊查看相關報導</div>`);
+      div.onmouseleave = hideTip;
+      div.onclick = () => {
+        hideTip();
+        $("company").value = label;
+        searchCompany();
+      };
+    }
     el.appendChild(div);
   }
 }
