@@ -124,12 +124,12 @@
   <div id="status"></div>
   <div id="dashboard">
     <div class="viz-grid">
-      <div class="panel">
+      <div class="panel" id="industryPanel">
         <h2>產業聲量樹狀圖</h2>
         <div class="sub">面積與顏色深淺 = 期間內可歸類報導篇數;點擊區塊可篩選該產業</div>
         <div id="treemap"></div>
       </div>
-      <div class="panel">
+      <div class="panel" id="wcPanel">
         <h2>熱門關鍵字文字雲</h2>
         <div class="sub" id="wcSub">字體大小 = 期間內提及該詞之報導篇數;顏色 = 該詞最常出現的產業</div>
         <div id="wordcloud"></div>
@@ -239,7 +239,15 @@ function loadOverview() {
   $("status").textContent = `期間 ${s} ~ ${e},共 ${arts.length} 筆` +
     (currentIndustry ? `(篩選:${currentIndustry})` : "");
   renderChips(counts);
-  renderTreemap(counts);
+  // 已篩選單一產業時,產業占比圖無意義 → 隱藏,文字雲改為全寬
+  if (currentIndustry) {
+    $("industryPanel").style.display = "none";
+    $("wcPanel").style.gridColumn = "1 / -1";
+  } else {
+    $("industryPanel").style.display = "";
+    $("wcPanel").style.gridColumn = "";
+    renderTreemap(counts);
+  }
   renderCompanyTreemap(filterArticles(s, e, "", ""));
   renderWordcloud();
   $("content").innerHTML = arts.slice(0, 300).map(cardHTML).join("") ||
@@ -349,7 +357,8 @@ function renderCompanyTreemap(periodArticles) {
   const panel = $("companyPanel");
   const el = $("companyTreemap");
   const wl = META.watchlist || {};
-  const industry = wl[currentIndustry] ? currentIndustry : Object.keys(wl)[0];
+  const industry = wl[currentIndustry] ? currentIndustry
+    : (wl["高科技製造業"] ? "高科技製造業" : Object.keys(wl)[0]);
   if (!industry) { panel.style.display = "none"; return; }
   panel.style.display = "";
   $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
