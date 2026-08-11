@@ -73,6 +73,10 @@ def run_report(days=7, start=None, end=None, title=None):
         start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
     conn = get_conn()
     articles = query_articles(conn, start_date=start, end_date=end, limit=20000)
+    # 等長前一期(供 SOV 變化對比)
+    span = (datetime.strptime(end, "%Y-%m-%d") - datetime.strptime(start, "%Y-%m-%d")).days or 1
+    prev_start = (datetime.strptime(start, "%Y-%m-%d") - timedelta(days=span)).strftime("%Y-%m-%d")
+    articles_prev = query_articles(conn, start_date=prev_start, end_date=start, limit=20000)
     status = latest_fetch_status(conn)
     conn.close()
     try:
@@ -81,7 +85,8 @@ def run_report(days=7, start=None, end=None, title=None):
     except Exception:  # noqa: BLE001 — 名錄失敗時報告仍可產出(略過公司統計)
         watchlist = None
     path = build_report(articles, start, end, fetch_status=status,
-                        title=title or "台灣產業趨勢監測報告", watchlist=watchlist)
+                        title=title or "台灣產業趨勢監測報告", watchlist=watchlist,
+                        articles_prev=articles_prev)
     logger.info("報告已產出:%s(%d 筆資料)", path, len(articles))
     return path
 

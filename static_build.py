@@ -102,11 +102,13 @@ def build():
         from report.word_report import build_report
         start_s = (now - timedelta(days=7)).strftime("%Y-%m-%d")
         end_s = now.strftime("%Y-%m-%d")
+        prev_start_s = (now - timedelta(days=14)).strftime("%Y-%m-%d")
         week_arts = query_articles(conn, start_date=start_s, end_date=end_s, limit=20000)
+        prev_arts = query_articles(conn, start_date=prev_start_s, end_date=start_s, limit=20000)
         report_name = f"台灣產業趨勢監測週報_{start_s}_{end_s}.docx"
         build_report(week_arts, start_s, end_s, fetch_status=status,
                      title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name,
-                     watchlist=watchlist)
+                     watchlist=watchlist, articles_prev=prev_arts)
         print(f"週報已產出:{report_name}")
     else:
         print("非週一,僅更新資料,不產出新週報")
@@ -129,6 +131,12 @@ def build():
     }
     # 上市櫃最近收盤價與漲跌幅(附行情所屬日期)
     meta["quotes"], meta["quotes_date"] = build_stock_quotes_by_abbr()
+
+    # 負面聲量警示(近 7 天,規則式初步偵測)
+    from analysis.alerts import negative_alerts
+    alert_cut = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    recent = [a for a in articles if (a.get("published_at") or "") >= alert_cut]
+    meta["alerts"] = negative_alerts(recent)
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
 

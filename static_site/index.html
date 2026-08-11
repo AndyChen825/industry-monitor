@@ -67,6 +67,16 @@
   /* SOV 對比條 */
   .sov-seg { height: 26px; display: inline-flex; align-items: center; justify-content: center;
              font-size: 12px; color: #fff; overflow: hidden; white-space: nowrap; }
+  /* 負面聲量警示列 */
+  #alertBar { background: rgba(225,64,64,0.10); border: 1px solid rgba(225,64,64,0.45);
+              border-radius: 10px; padding: 10px 16px; margin-bottom: 14px;
+              display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .alert-title { color: #ff8585; font-weight: 700; font-size: 14px; margin-right: 4px; }
+  .alert-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px;
+                border-radius: 14px; font-size: 12px; cursor: pointer; color: var(--ink);
+                background: rgba(225,64,64,0.16); border: 1px solid rgba(225,64,64,0.5); }
+  .alert-chip:hover { background: rgba(225,64,64,0.3); }
+  .alert-note { font-size: 11px; color: var(--muted); width: 100%; }
   .tm-name { font-size: 12px; font-weight: 600; display: block;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tm-count { font-size: 11px; opacity: .82; }
@@ -137,6 +147,7 @@
 <main>
   <div id="status"></div>
   <div id="dashboard">
+    <div id="alertBar" class="hidden"></div>
     <div class="viz-grid">
       <div class="panel" id="industryPanel">
         <h2>產業聲量樹狀圖</h2>
@@ -261,6 +272,7 @@ async function initData() {
     ]);
     ALL = a; KEYWORDS = k; META = m;
     $("updated").textContent = "資料更新:" + (m.generated_at || "").slice(0, 16).replace("T", " ");
+    renderAlerts();
     loadOverview();
   } catch (e) {
     $("status").innerHTML =
@@ -543,6 +555,38 @@ function cardHTML(a) {
     <div class="meta">${a.source} | ${(a.published_at || "日期不明").slice(0, 16)}</div>
     ${a.summary ? `<div class="summary">${a.summary.slice(0, 160)}…</div>` : ""}
   </div>`;
+}
+
+/* ---------- 負面聲量警示(近 7 天,規則式初步偵測) ---------- */
+function renderAlerts() {
+  const bar = $("alertBar");
+  const alerts = META.alerts || [];
+  if (!alerts.length) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  bar.innerHTML = `<span class="alert-title">⚠ 負面聲量警示(近 7 天)</span>` +
+    alerts.slice(0, 10).map((al, i) =>
+      `<span class="alert-chip" onclick="showAlertDetail(${i})"
+        title="命中詞:${al.keywords.join("、")}">${al.company} ${al.count} 篇</span>`).join("") +
+    `<span class="alert-note">規則式偵測(公司 × 負面關鍵詞),僅供初步示警,實際立場請點入人工確認</span>`;
+}
+
+function showAlertDetail(i) {
+  const al = (META.alerts || [])[i];
+  if (!al) return;
+  $("dashboard").style.display = "none";
+  let html = `<h2 class="section">⚠ ${al.company} — 疑似負面訊號 ${al.count} 篇(近 7 天)</h2>`;
+  html += `<div class="note">命中關鍵詞:${al.keywords.join("、")}。規則式偵測僅供初步示警,`
+    + `報導亦可能為中性或同業事件,請逐篇確認。點右上「⌂ 回到首頁」返回。</div>`;
+  html += al.samples.map(s => `<div class="card" style="border-left-color:#e14040">
+    <h3><a href="${s.url}" target="_blank" rel="noopener">${s.title}</a></h3>
+    <div class="meta">${s.source} | ${s.published_at || "日期不明"}</div></div>`).join("");
+  if (al.count > al.samples.length) {
+    html += `<p style="font-size:13px;color:var(--muted)">僅列出前 ${al.samples.length} 篇;`
+      + `完整清單可用公司搜尋「${al.company}」檢視。</p>`;
+  }
+  $("status").textContent = "";
+  $("content").innerHTML = html;
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 /* ---------- 竄升關鍵字(本期 vs 等長前期成長最快) ---------- */

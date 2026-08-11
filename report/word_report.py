@@ -50,13 +50,14 @@ def _cite_para(doc, article, bullet=True):
 
 def build_report(articles, start_date, end_date, fetch_status=None,
                  title="台灣產業趨勢監測週報", company_section=None, out_path=None,
-                 watchlist=None):
+                 watchlist=None, articles_prev=None):
     """產出 Word 報告,回傳檔案路徑。
 
     articles:期間內文章(dict list,含 industry 欄位)
     fetch_status:各來源最近抓取狀態(標示資料缺口)
     company_section:公司情報 dict(公司報告用),含 name/registry/news
     watchlist:公司觀察清單(有提供時產出各產業公司聲量統計)
+    articles_prev:等長前一期文章(有提供時 SOV 對比附前期變化)
     """
     doc = Document()
     _set_base_font(doc)
@@ -167,6 +168,73 @@ def build_report(articles, start_date, end_date, fetch_status=None,
             p = doc.add_paragraph(style="List Bullet")
             p.add_run(f"{ind}:").bold = True
             p.add_run("、".join(f"{n}({c} 篇)" for n, c in ranked))
+
+    # 統計總覽 三、競品 SOV 對比(固定對比組)
+    _heading(doc, "三、競品聲量對比(SOV)", 2)
+    from config import REPORT_SOV_GROUPS
+    from analysis.companies import make_matcher
+
+    def _find_aliases(name):
+        for comps in (watchlist or {}).values():
+            if name in comps:
+                return comps[name]
+        return [name]
+
+    def _mention_count(arts, match):
+        return sum(1 for a in arts
+                   if match(f"{a.get('title', '')} {a.get('summary', '')} {a.get('source', '')}"))
+
+    doc.add_paragraph(
+        "SOV(Share of Voice)= 該公司篇數 ÷ 對比組合計篇數。"
+        + ("「變化」為相較等長前一期之篇數增減。" if articles_prev else ""))
+    for group_name, names in REPORT_SOV_GROUPS.items():
+        rows = []
+        for n in names:
+            m = make_matcher(_find_aliases(n))
+            cur_c = _mention_count(articles, m)
+            prev_c = _mention_count(articles_prev, m) if articles_prev else None
+            rows.append((n, cur_c, prev_c))
+        gtotal = sum(c for _, c, _ in rows)
+        gp = doc.add_paragraph()
+        gp.add_run(f"【{group_name}】合計 {gtotal} 篇").bold = True
+        table = doc.add_table(rows=1, cols=4 if articles_prev else 3)
+        table.style = "Light Grid Accent 1"
+        hdr = table.rows[0].cells
+        headers = ["公司", "本期篇數", "SOV"] + (["較前期變化"] if articles_prev else [])
+        for i, t in enumerate(headers):
+            hdr[i].text = t
+        for n, c, pv in sorted(rows, key=lambda x: -x[1]):
+            row = table.add_row().cells
+            row[0].text = n
+            row[1].text = str(c)
+            row[2].text = f"{c / gtotal * 100:.1f}%" if gtotal else "—"
+            if articles_prev:
+                diff = c - (pv or 0)
+                row[3].text = f"{'▲' if diff > 0 else ('▼' if diff < 0 else '—')}{abs(diff)}(前期 {pv})"
+
+    # ---- 負面聲量警示 ----
+    doc.add_page_break()
+    _heading(doc, f"{next(section_no)}、負面聲量警示", 1)
+    warn = doc.add_paragraph(
+        "以下為規則式偵測(觀察名單公司 × 負面關鍵詞同時命中),僅供初步示警,"
+        "文章實際立場需人工確認(例:報導同業出事亦可能命中)。")
+    warn.runs[0].font.size = Pt(9)
+    warn.runs[0].font.color.rgb = GRAY
+    from analysis.alerts import negative_alerts
+    alerts = negative_alerts(articles)
+    if not alerts:
+        doc.add_paragraph("本期未偵測到觀察名單公司之負面訊號。")
+    else:
+        for al in alerts[:10]:
+            p = doc.add_paragraph()
+            p.add_run(f"⚠ {al['company']}(疑似負面 {al['count']} 篇;"
+                      f"命中詞:{'、'.join(al['keywords'])})").bold = True
+            for s in al["samples"][:3]:
+                sp = doc.add_paragraph(style="List Bullet")
+                sp.add_run(s["title"])
+                c = sp.add_run(f" ({s['source']},{s['published_at'] or '日期不明'},{s['url']})")
+                c.font.size = Pt(9)
+                c.font.color.rgb = GRAY
 
     # ---- 公司情報(公司報告專用) ----
     if company_section:
