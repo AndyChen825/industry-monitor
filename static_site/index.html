@@ -224,16 +224,24 @@ function hideTip() { tip.style.display = "none"; }
 
 /* ---------- 資料載入(靜態 JSON,一次載入後全在瀏覽器端運算) ---------- */
 async function initData() {
-  $("status").textContent = "載入資料中…";
+  $("status").textContent = "載入資料中(約 1~3MB,首次開啟或網速較慢時需數秒)…";
   const v = "?v=" + Math.floor(Date.now() / 600000);   // 10 分鐘快取窗
-  const [a, k, m] = await Promise.all([
-    fetch("data/articles.json" + v).then(r => r.json()),
-    fetch("data/keywords.json" + v).then(r => r.json()),
-    fetch("data/meta.json" + v).then(r => r.json()),
-  ]);
-  ALL = a; KEYWORDS = k; META = m;
-  $("updated").textContent = "資料更新:" + (m.generated_at || "").slice(0, 16).replace("T", " ");
-  loadOverview();
+  const get = f => fetch("data/" + f + v).then(r => {
+    if (!r.ok) throw new Error(f + " HTTP " + r.status);
+    return r.json();
+  });
+  try {
+    const [a, k, m] = await Promise.all([
+      get("articles.json"), get("keywords.json"), get("meta.json"),
+    ]);
+    ALL = a; KEYWORDS = k; META = m;
+    $("updated").textContent = "資料更新:" + (m.generated_at || "").slice(0, 16).replace("T", " ");
+    loadOverview();
+  } catch (e) {
+    $("status").innerHTML =
+      `資料載入失敗(${e.message || "網路中斷"})。` +
+      `<button class="btn" style="margin-left:10px" onclick="initData()">重試</button>`;
+  }
 }
 
 function filterArticles(startS, endS, industry, keyword) {

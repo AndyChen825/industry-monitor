@@ -35,17 +35,20 @@ def build():
     articles = query_articles(conn, start_date=since, limit=100000)
     status = latest_fetch_status(conn)
 
-    # 文章資料(僅保留前端需要的欄位)
+    # 文章資料(僅保留前端需要的欄位;控制檔案大小:
+    # 90 天內全數保留,90 天前僅保留可歸類文章供 YTD 統計/瀏覽)
+    recent_cut = (now - timedelta(days=90)).strftime("%Y-%m-%d")
     slim = [
         {
             "title": a["title"],
-            "summary": (a.get("summary") or "")[:200],
+            "summary": (a.get("summary") or "")[:140],
             "source": a["source"],
             "url": a["url"],
             "published_at": a.get("published_at") or "",
             "industry": a.get("industry"),
         }
         for a in articles
+        if a.get("industry") or (a.get("published_at") or "") >= recent_cut
     ]
     (DATA_DIR / "articles.json").write_text(
         json.dumps(slim, ensure_ascii=False), encoding="utf-8")
