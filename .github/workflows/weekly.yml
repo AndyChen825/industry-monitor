@@ -2,11 +2,12 @@ name: weekly-update
 
 on:
   schedule:
-    # 每天 12:00(台北時間,UTC+8)= 04:00 UTC 抓取資料;
-    # Word 週報由 static_build.py 僅於週一產出
-    - cron: "0 4 * * *"
-    # 平日 17:30(台北)= 09:30 UTC 收盤後再更新一次,取得當日收盤行情
-    - cron: "30 9 * * 1-5"
+    # 以下均為台北時間(UTC+8)換算;Word 週報由 static_build.py 僅於週一產出
+    - cron: "0 1 * * 1-5"    # 平日 09:00 開盤 — 更新新聞
+    - cron: "0 4 * * *"      # 每天 12:00 — 例行更新
+    - cron: "30 5 * * 1-5"   # 平日 13:30 收盤 — 更新新聞(當日收盤行情證交所須至傍晚才發布)
+    - cron: "30 9 * * 1-5"   # 平日 17:30 — 取得當日收盤行情
+
   workflow_dispatch: {}   # 允許在 GitHub 網頁上手動觸發
 
 permissions:
