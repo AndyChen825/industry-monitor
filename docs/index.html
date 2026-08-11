@@ -116,7 +116,7 @@
   </span>
   <input type="text" id="company" placeholder="公司名稱關鍵字(公司搜尋)" size="24">
   <button class="btn primary" onclick="searchCompany()">公司搜尋</button>
-  <button class="btn" onclick="loadOverview()">產業瀏覽</button>
+  <button class="btn" onclick="browseIndustries()">產業瀏覽</button>
   <button class="btn" onclick="showReports()">下載週報</button>
 </div>
 
@@ -185,6 +185,13 @@ function onPeriodChange() {
   $("customRange").classList.toggle("hidden", $("period").value !== "custom");
   if ($("period").value !== "custom") loadOverview();
 }
+function browseIndustries() {
+  // 重設產業篩選回「全部」,確保點擊後必有視覺變化(產業樹狀圖重新出現)
+  currentIndustry = "";
+  loadOverview();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function goHome() {
   currentIndustry = "";
   $("period").value = "7d";
