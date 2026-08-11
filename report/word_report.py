@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """Word 報告產生器(python-docx)。
 
-結構:封面 → 執行摘要(附出處) → 各產業動態 → 建議策略(標明 AI 分析)
-     → 資料缺口說明 → 附錄:引用來源總表。
+結構:封面 → 執行摘要與總體結論(附出處) → 統計總覽(產業篇數/公司聲量)
+     → 各產業動態 → 建議策略(標明 AI 分析) → 資料缺口說明 → 附錄:引用來源總表。
 """
+from collections import Counter
 from datetime import datetime, timezone, timedelta
 
 from docx import Document
@@ -12,6 +13,8 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from config import INDUSTRIES, REPORT_DIR
 from analysis.summarizer import summarize_period, detect_themes, format_citation
+
+SECTION_NUMERALS = ["壹", "貳", "參", "肆", "伍", "陸", "柒"]
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
 
@@ -46,16 +49,28 @@ def _cite_para(doc, article, bullet=True):
 
 
 def build_report(articles, start_date, end_date, fetch_status=None,
-                 title="台灣產業趨勢監測週報", company_section=None, out_path=None):
+                 title="台灣產業趨勢監測週報", company_section=None, out_path=None,
+                 watchlist=None):
     """產出 Word 報告,回傳檔案路徑。
 
     articles:期間內文章(dict list,含 industry 欄位)
     fetch_status:各來源最近抓取狀態(標示資料缺口)
     company_section:公司情報 dict(公司報告用),含 name/registry/news
+    watchlist:公司觀察清單(有提供時產出各產業公司聲量統計)
     """
     doc = Document()
     _set_base_font(doc)
     now = datetime.now(TZ_TAIPEI)
+
+    # ---- 統計基礎(供執行摘要/統計總覽共用) ----
+    classified = [a for a in articles if a.get("industry")]
+    ind_counts = Counter(a["industry"] for a in classified)
+    comp_stats = {}
+    if watchlist:
+        from analysis.companies import company_counts
+        comp_stats = company_counts(articles, watchlist, top_n=10)
+    themes = detect_themes(articles)
+    section_no = iter(SECTION_NUMERALS)
 
     # ---- 封面 ----
     for _ in range(6):
@@ -76,15 +91,40 @@ def build_report(articles, start_date, end_date, fetch_status=None,
         rr.font.color.rgb = GRAY
     doc.add_page_break()
 
-    # ---- 執行摘要 ----
-    _heading(doc, "壹、執行摘要", 1)
+    # ---- 執行摘要與總體結論 ----
+    _heading(doc, f"{next(section_no)}、執行摘要與總體結論", 1)
     by_ind = summarize_period(articles, top_n=3)
     if not by_ind:
         doc.add_paragraph("本期間內未取得可歸類之產業新聞資料 —— 資料不足。")
     else:
-        doc.add_paragraph(
-            f"本期間共蒐集 {len(articles)} 筆公開報導,可歸類至 "
-            f"{len(by_ind)} 個產業類別。各產業重點如下(每點附出處):")
+        # 總體結論(依統計自動生成,數據可溯源)
+        _heading(doc, "一、總體結論(系統依統計自動生成)", 2)
+        total_classified = sum(ind_counts.values())
+        top_inds = ind_counts.most_common(3)
+        parts = [
+            f"本期間({start_date} ~ {end_date})共蒐集 {len(articles)} 篇公開報導,"
+            f"其中 {total_classified} 篇可歸類至 {len(ind_counts)} 個產業類別"
+            f"({len(articles) - total_classified} 篇為一般性新聞未歸類)。",
+            "聲量最高的產業依序為:" + "、".join(
+                f"{ind}({cnt} 篇,佔可歸類報導 {cnt / total_classified * 100:.1f}%)"
+                for ind, cnt in top_inds) + "。",
+        ]
+        if comp_stats:
+            merged = {}
+            for ranked in comp_stats.values():
+                for name, cnt in ranked:
+                    merged[name] = max(merged.get(name, 0), cnt)
+            top_comps = sorted(merged.items(), key=lambda x: -x[1])[:5]
+            parts.append("公司層面,全市場被提及次數最高者為:" + "、".join(
+                f"{n}({c} 篇)" for n, c in top_comps) + "。")
+        if themes:
+            parts.append("跨產業主題方面,以「" + themes[0][0] +
+                         f"」相關報導最多({themes[0][1]} 篇)" +
+                         ("、其次為「" + themes[1][0] + f"」({themes[1][1]} 篇)"
+                          if len(themes) > 1 else "") + ",詳見建議策略章節。")
+        doc.add_paragraph(" ".join(parts))
+
+        _heading(doc, "二、各產業重點(每點附出處)", 2)
         for ind in INDUSTRIES:
             arts = by_ind.get(ind)
             if not arts:
@@ -94,10 +134,44 @@ def build_report(articles, start_date, end_date, fetch_status=None,
             for a in arts[:2]:
                 _cite_para(doc, a)
 
+    # ---- 統計總覽 ----
+    doc.add_page_break()
+    _heading(doc, f"{next(section_no)}、統計總覽", 1)
+    _heading(doc, "一、各產業報導篇數", 2)
+    if not ind_counts:
+        doc.add_paragraph("本期間無可歸類報導 —— 資料不足。")
+    else:
+        total_classified = sum(ind_counts.values())
+        table = doc.add_table(rows=1, cols=3)
+        table.style = "Light Grid Accent 1"
+        hdr = table.rows[0].cells
+        for i, t in enumerate(("產業", "報導篇數", "佔可歸類報導比例")):
+            hdr[i].text = t
+        for ind in INDUSTRIES:
+            cnt = ind_counts.get(ind, 0)
+            row = table.add_row().cells
+            row[0].text = ind
+            row[1].text = str(cnt)
+            row[2].text = f"{cnt / total_classified * 100:.1f}%" if cnt else "—"
+    _heading(doc, "二、各產業公司聲量(前 10 大)", 2)
+    if not comp_stats:
+        doc.add_paragraph("未提供公司觀察清單,本節從缺。")
+    else:
+        doc.add_paragraph(
+            "統計方式:以上市櫃公司名錄+自訂品牌清單比對報導之標題/摘要/來源,"
+            "計算各公司被提及之篇數(不限文章之產業分類;同名詞彙可能造成少量誤計)。")
+        for ind in INDUSTRIES:
+            ranked = comp_stats.get(ind)
+            if not ranked:
+                continue
+            p = doc.add_paragraph(style="List Bullet")
+            p.add_run(f"{ind}:").bold = True
+            p.add_run("、".join(f"{n}({c} 篇)" for n, c in ranked))
+
     # ---- 公司情報(公司報告專用) ----
     if company_section:
         doc.add_page_break()
-        _heading(doc, f"貳、公司情報:{company_section['name']}", 1)
+        _heading(doc, f"{next(section_no)}、公司情報:{company_section['name']}", 1)
         reg = company_section.get("registry") or {}
         _heading(doc, "一、商工登記資料", 2)
         if reg.get("results"):
@@ -131,7 +205,7 @@ def build_report(articles, start_date, end_date, fetch_status=None,
 
     # ---- 各產業動態 ----
     doc.add_page_break()
-    _heading(doc, "參、各產業動態摘要" if company_section else "貳、各產業動態摘要", 1)
+    _heading(doc, f"{next(section_no)}、各產業動態摘要", 1)
     by_ind_full = summarize_period(articles, top_n=8)
     for ind, spec in INDUSTRIES.items():
         _heading(doc, ind, 2)
@@ -142,17 +216,23 @@ def build_report(articles, start_date, end_date, fetch_status=None,
         if not arts:
             doc.add_paragraph("本期間無可歸類至此產業之報導 —— 資料不足。")
             continue
+        stat = doc.add_paragraph()
+        stat.add_run(f"本期共 {ind_counts.get(ind, 0)} 篇報導").bold = True
+        ranked = comp_stats.get(ind)
+        if ranked:
+            stat.add_run(";公司聲量前段:" + "、".join(
+                f"{n}({c} 篇)" for n, c in ranked[:5]))
+        stat.add_run("。重點報導如下:")
         for a in arts:
             _cite_para(doc, a)
 
     # ---- 建議策略 ----
     doc.add_page_break()
-    _heading(doc, "肆、建議策略" if company_section else "參、建議策略", 1)
+    _heading(doc, f"{next(section_no)}、建議策略", 1)
     disclaimer = doc.add_paragraph(
         "以下為系統依據期間內報導之主題統計所產生之策略觀察,屬 AI 分析,僅供參考,"
         "不構成投資或經營建議;每項觀察附代表性報導出處。")
     disclaimer.runs[0].font.color.rgb = GRAY
-    themes = detect_themes(articles)
     if not themes:
         doc.add_paragraph("期間內資料量不足以形成跨產業主題觀察 —— 資料不足。")
     else:

@@ -72,11 +72,16 @@ def run_report(days=7, start=None, end=None, title=None):
     if not start:
         start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
     conn = get_conn()
-    articles = query_articles(conn, start_date=start, end_date=end, limit=2000)
+    articles = query_articles(conn, start_date=start, end_date=end, limit=20000)
     status = latest_fetch_status(conn)
     conn.close()
+    try:
+        from analysis.companies import build_watchlist
+        watchlist = build_watchlist()
+    except Exception:  # noqa: BLE001 — 名錄失敗時報告仍可產出(略過公司統計)
+        watchlist = None
     path = build_report(articles, start, end, fetch_status=status,
-                        title=title or "台灣產業趨勢監測報告")
+                        title=title or "台灣產業趨勢監測報告", watchlist=watchlist)
     logger.info("報告已產出:%s(%d 筆資料)", path, len(articles))
     return path
 

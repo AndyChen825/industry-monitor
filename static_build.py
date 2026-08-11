@@ -11,89 +11,10 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from config import BASE_DIR, COMPANY_WATCHLIST, INDUSTRIES
+from config import BASE_DIR, INDUSTRIES
 from db import get_conn, query_articles, latest_fetch_status
 from analysis.keywords import top_keywords
-from fetchers.base import http_get
-
-# 證交所/櫃買中心 產業別代碼 → 本系統 11 大產業
-TWSE_INDUSTRY_MAP = {
-    "24": "高科技製造業", "25": "高科技製造業", "26": "高科技製造業",
-    "28": "高科技製造業", "31": "高科技製造業",
-    "01": "傳統製造業", "02": "傳統製造業", "03": "傳統製造業",
-    "04": "傳統製造業", "05": "傳統製造業", "06": "傳統製造業",
-    "08": "傳統製造業", "09": "傳統製造業", "10": "傳統製造業",
-    "11": "傳統製造業", "12": "傳統製造業", "21": "傳統製造業", "33": "傳統製造業",
-    "18": "批發零售業", "29": "批發零售業", "34": "批發零售業", "38": "批發零售業",
-    "16": "住宿及餐飲業",
-    "27": "資通訊業", "30": "資通訊業", "36": "資通訊業",
-    "17": "金融業",
-    "22": "醫療保健業",
-    "14": "服務業", "15": "服務業", "23": "服務業", "32": "服務業",
-    "35": "服務業", "37": "服務業", "20": "服務業",
-}
-
-LISTED_CACHE = BASE_DIR / "data" / "listed_companies.json"
-
-# 與日常用語同形的公司簡稱,自動比對必然大量誤計,排除之
-# (如需追蹤這些公司,請於 config.COMPANY_WATCHLIST 以全名/別名手動登錄)
-AMBIGUOUS_ABBRS = {
-    # 與日常用語/地名同形
-    "全台", "全新", "全國", "大眾", "中央", "國際", "亞洲", "第一", "中華",
-    "台灣", "環球", "東方", "精英", "時代", "百達", "現代", "自然美",
-    "大學", "光明", "南方", "太平洋", "文化", "健康", "數字", "商店",
-    "台南", "南港", "冠軍", "幸福", "大量", "統一", "大成", "欣欣",
-    # 為其他更常見公司名之子字串,必然誤計
-    "南亞",   # ⊂ 南亞科
-    "聯發",   # ⊂ 聯發科
-    "華電",   # ⊂ 中華電信
-    "三星",   # 螺絲廠,誤吃 Samsung(三星電子已於高科技手動清單)
-    "東森",   # 誤吃東森新聞(媒體名)
-    "京城",   # ⊂ 京城銀
-}
-
-COMPANY_LIST_APIS = [
-    "https://openapi.twse.com.tw/v1/opendata/t187ap03_L",   # 上市
-    "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",  # 上櫃
-]
-
-
-def fetch_listed_companies():
-    """取得全體上市櫃公司(簡稱+產業別);失敗時退回快取。"""
-    rows = []
-    for url in COMPANY_LIST_APIS:
-        resp = http_get(url, check_robots=False)  # 官方開放 API
-        if resp is None:
-            continue
-        try:
-            rows.extend(resp.json())
-        except ValueError:
-            continue
-    if rows:
-        LISTED_CACHE.write_text(json.dumps(rows, ensure_ascii=False), encoding="utf-8")
-        return rows
-    if LISTED_CACHE.exists():
-        print("公司名錄 API 失敗,使用上次快取")
-        return json.loads(LISTED_CACHE.read_text(encoding="utf-8"))
-    return []
-
-
-def build_watchlist():
-    """上市櫃公司名錄(自動)+ 手動觀察清單(補非上市櫃品牌與英文別名)。"""
-    watchlist = {}
-    for row in fetch_listed_companies():
-        abbr = str(row.get("公司簡稱", "")).strip()
-        code = str(row.get("產業別", "")).strip().zfill(2)
-        industry = TWSE_INDUSTRY_MAP.get(code)
-        if not industry or len(abbr) < 2 or abbr in AMBIGUOUS_ABBRS:
-            continue
-        watchlist.setdefault(industry, {})[abbr] = [abbr]
-    # 手動清單合併:同名者聯集別名(補英文名),不同名者新增
-    for industry, companies in COMPANY_WATCHLIST.items():
-        bucket = watchlist.setdefault(industry, {})
-        for name, aliases in companies.items():
-            bucket[name] = sorted(set(bucket.get(name, [])) | set(aliases))
-    return watchlist
+from analysis.companies import build_watchlist
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
 DOCS_DIR = BASE_DIR / "docs"
@@ -150,6 +71,8 @@ def build():
     (DATA_DIR / "keywords.json").write_text(
         json.dumps(keywords, ensure_ascii=False), encoding="utf-8")
 
+    watchlist = build_watchlist()
+
     # 當週 Word 報告:僅於週一產出(或設 FORCE_REPORT=1 強制、或尚無任何報告時)
     import os
     existing = list(REPORTS_DIR.glob("*.docx"))
@@ -157,10 +80,11 @@ def build():
         from report.word_report import build_report
         start_s = (now - timedelta(days=7)).strftime("%Y-%m-%d")
         end_s = now.strftime("%Y-%m-%d")
-        week_arts = query_articles(conn, start_date=start_s, end_date=end_s, limit=2000)
+        week_arts = query_articles(conn, start_date=start_s, end_date=end_s, limit=20000)
         report_name = f"台灣產業趨勢監測週報_{start_s}_{end_s}.docx"
         build_report(week_arts, start_s, end_s, fetch_status=status,
-                     title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name)
+                     title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name,
+                     watchlist=watchlist)
         print(f"週報已產出:{report_name}")
     else:
         print("非週一,僅更新資料,不產出新週報")
@@ -179,7 +103,7 @@ def build():
         "article_count": len(slim),
         "fetch_status": status,
         "reports": report_files,
-        "watchlist": build_watchlist(),
+        "watchlist": watchlist,
     }
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
