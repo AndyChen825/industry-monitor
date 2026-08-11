@@ -8,13 +8,16 @@
 from config import COMPANY_WATCHLIST, NEGATIVE_KEYWORDS
 from analysis.companies import make_matcher
 
+# 主管機關/政府單位:負面詞多為其「執法行為」(裁罰他人)而非自身事件,不列入警示
+ALERT_EXCLUDE = {"金管會", "教育部", "國科會", "中研院"}
+
 
 def _company_matchers():
     seen = set()
     matchers = []
     for companies in COMPANY_WATCHLIST.values():
         for name, aliases in companies.items():
-            if name in seen:
+            if name in seen or name in ALERT_EXCLUDE:
                 continue
             seen.add(name)
             matchers.append((name, make_matcher(aliases)))
