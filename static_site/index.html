@@ -54,6 +54,19 @@
                         text-align: center; border: 1px solid rgba(255,255,255,0.14); }
   .tm-block.tm-center .tm-label { position: static; left: auto; top: auto; right: auto; padding: 0 6px; }
   .tm-quote { display: block; font-size: 11px; font-weight: 700; margin-top: 1px; }
+  /* 竄升關鍵字 */
+  #risingWrap { border-top: 1px solid var(--grid); margin-top: 10px; padding-top: 10px;
+                display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+  .rise-title { font-size: 13px; color: var(--ink); font-weight: 600; margin-right: 4px; }
+  .rise-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px;
+               border-radius: 14px; font-size: 12px; cursor: pointer;
+               background: rgba(225,64,64,0.12); border: 1px solid rgba(225,64,64,0.4);
+               color: var(--ink); }
+  .rise-chip:hover { background: rgba(225,64,64,0.25); }
+  .rise-chip .pct { color: #ff8585; font-weight: 700; }
+  /* SOV 對比條 */
+  .sov-seg { height: 26px; display: inline-flex; align-items: center; justify-content: center;
+             font-size: 12px; color: #fff; overflow: hidden; white-space: nowrap; }
   .tm-name { font-size: 12px; font-weight: 600; display: block;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tm-count { font-size: 11px; opacity: .82; }
@@ -132,11 +145,26 @@
       <div class="panel" id="wcPanel">
         <h2>熱門關鍵字文字雲</h2>
         <div id="wordcloud"></div>
+        <div id="risingWrap" class="hidden">
+          <span class="rise-title">🔥 本期竄升詞</span>
+          <span id="risingChips"></span>
+        </div>
       </div>
     </div>
     <div class="panel" id="companyPanel" style="margin-bottom:18px">
       <h2 id="cpTitle">公司聲量樹狀圖</h2>
       <div id="companyTreemap" style="width:100%;height:300px;position:relative"></div>
+    </div>
+    <div class="panel" id="comparePanel" style="margin-bottom:18px">
+      <h2>競品聲量對比與趨勢</h2>
+      <div style="display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="cmpInput" size="42"
+               placeholder="以逗號分隔公司名(最多 4 家),留空 = 自動取本產業前 3 大">
+        <button class="btn primary" onclick="renderCompare()">更新對比</button>
+      </div>
+      <div id="cmpLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0;font-size:13px"></div>
+      <div id="sovBar" style="margin:8px 0 12px"></div>
+      <div id="trendChart" style="width:100%"></div>
     </div>
     <div class="chips" id="chips"></div>
   </div>
@@ -272,6 +300,7 @@ function loadOverview() {
   }
   renderCompanyTreemap(filterArticles(s, e, "", ""));
   renderWordcloud();
+  renderCompare();
   $("content").innerHTML = arts.slice(0, 300).map(cardHTML).join("") ||
     "<p>此期間尚無資料。</p>";
 }
@@ -395,6 +424,7 @@ function renderCompanyTreemap(periodArticles) {
     }
   }
   let data = Object.entries(counts).sort((x, y) => y[1] - x[1]);
+  window._lastCompanyRank = data.map(([k]) => k);   // 供競品對比預設取前 3 大
   if (!data.length) {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間報導中未偵測到已知公司名稱(多為不含特定公司之產業新聞)。</p>";
     return;
@@ -472,11 +502,15 @@ function renderWordcloud() {
   const p = $("period").value;
   if (p === "custom") {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>文字雲僅支援預設期間(近 7/30/90 天、YTD)。</p>";
+    renderRising([]);
     return;
   }
   const group = KEYWORDS[p] || {};
-  // 相容舊版格式(陣列 = 全產業);新版為 {all, 各產業} 分組
-  const words = Array.isArray(group) ? group : (group[currentIndustry || "all"] || []);
+  // 格式相容:最新為 {scope: {top, rising}};舊版為 {scope: [...]} 或 [...]
+  let scoped = Array.isArray(group) ? group : (group[currentIndustry || "all"] || []);
+  const words = Array.isArray(scoped) ? scoped : (scoped.top || []);
+  const rising = Array.isArray(scoped) ? [] : (scoped.rising || []);
+  renderRising(rising);
   if (!words.length) {
     el.innerHTML = "<p style='color:var(--muted);font-size:13px'>此期間該產業無足夠資料。</p>";
     return;
@@ -509,6 +543,131 @@ function cardHTML(a) {
     <div class="meta">${a.source} | ${(a.published_at || "日期不明").slice(0, 16)}</div>
     ${a.summary ? `<div class="summary">${a.summary.slice(0, 160)}…</div>` : ""}
   </div>`;
+}
+
+/* ---------- 竄升關鍵字(本期 vs 等長前期成長最快) ---------- */
+function renderRising(rising) {
+  const wrap = $("risingWrap");
+  if (!rising || !rising.length) { wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
+  $("risingChips").innerHTML = rising.slice(0, 8).map(r => {
+    const times = r.prev > 0 ? `▲${(r.count / Math.max(r.prev, 1)).toFixed(1)}×` : "▲新進榜";
+    return `<span class="rise-chip" onclick="showKeywordResults('${r.word}')"
+      title="前期 ${r.prev} 篇 → 本期 ${r.count} 篇">
+      ${r.word} <span class="pct">${times}</span><span style="color:var(--muted)">${r.count}篇</span></span>`;
+  }).join("");
+}
+
+/* ---------- 競品聲量對比與趨勢 ---------- */
+const CMP_COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)"];
+const CMP_HEX = ["#3987e5", "#d95926", "#199e70", "#c98500"];
+
+function defaultCompareNames() {
+  // 取目前產業公司聲量前 3 大(排除「其他」)
+  return (window._lastCompanyRank || []).slice(0, 3);
+}
+
+function renderCompare() {
+  const input = $("cmpInput").value.trim();
+  let names = input
+    ? input.split(/[,,、;;\s]+/).filter(Boolean).slice(0, 4)
+    : defaultCompareNames();
+  const legendEl = $("cmpLegend"), sovEl = $("sovBar"), chartEl = $("trendChart");
+  if (!names.length) {
+    legendEl.innerHTML = ""; sovEl.innerHTML = "";
+    chartEl.innerHTML = "<p style='color:var(--muted);font-size:13px'>請輸入公司名稱進行對比。</p>";
+    return;
+  }
+  const [s, e] = resolvePeriod();
+  // 日期軸
+  const days = [];
+  for (let d = new Date(s); fmt(d) <= e; d.setDate(d.getDate() + 1)) days.push(fmt(d));
+  if (days.length < 2 || days.length > 400) {
+    chartEl.innerHTML = "<p style='color:var(--muted);font-size:13px'>期間過短或過長,無法繪製趨勢。</p>";
+    legendEl.innerHTML = ""; sovEl.innerHTML = "";
+    return;
+  }
+  // 各公司每日提及數
+  const series = names.map((name, i) => {
+    const aliases = findWatchAliases(name) || [name];
+    const match = aliasMatcher(aliases);
+    const daily = Object.fromEntries(days.map(d => [d, 0]));
+    let total = 0;
+    for (const a of ALL) {
+      const d = (a.published_at || "").slice(0, 10);
+      if (!(d in daily)) continue;
+      if (match(a.title + " " + (a.summary || "") + " " + (a.source || ""))) {
+        daily[d]++; total++;
+      }
+    }
+    return { name, color: CMP_HEX[i], values: days.map(d => daily[d]), total };
+  });
+  const grand = series.reduce((s2, x) => s2 + x.total, 0);
+
+  // 圖例(含 SOV %)
+  legendEl.innerHTML = series.map(x =>
+    `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+       background:${x.color};margin-right:6px"></span>${x.name}
+     <span style="color:var(--muted)">${x.total} 篇${grand ? "(SOV " + (x.total / grand * 100).toFixed(1) + "%)" : ""}</span></span>`
+  ).join("");
+
+  // SOV 100% 堆疊條
+  if (grand > 0) {
+    sovEl.innerHTML = `<div style="display:flex;gap:2px;border-radius:6px;overflow:hidden">` +
+      series.map(x => {
+        const w = (x.total / grand * 100);
+        return `<span class="sov-seg" style="width:${w}%;background:${x.color}"
+          title="${x.name} ${x.total} 篇(${w.toFixed(1)}%)">${w > 12 ? x.name + " " + w.toFixed(0) + "%" : ""}</span>`;
+      }).join("") + `</div>`;
+  } else {
+    sovEl.innerHTML = "<p style='color:var(--muted);font-size:13px'>期間內皆無提及。</p>";
+  }
+
+  drawTrendChart(chartEl, series, days);
+}
+
+/* SVG 折線圖:2px 線、hover 十字準線+提示 */
+function drawTrendChart(el, series, days) {
+  const W = el.clientWidth || 800, H = 220;
+  const padL = 36, padR = 12, padT = 10, padB = 24;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const maxV = Math.max(1, ...series.flatMap(x => x.values));
+  const xPos = i => padL + (days.length === 1 ? 0 : i / (days.length - 1) * iw);
+  const yPos = v => padT + ih - (v / maxV) * ih;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="display:block">`;
+  // 水平格線與 y 刻度
+  for (const frac of [0, 0.5, 1]) {
+    const v = Math.round(maxV * frac), y = yPos(v);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#2c2c2a" stroke-width="1"/>`;
+    svg += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="#898781">${v}</text>`;
+  }
+  // x 刻度(首/中/末)
+  for (const i of [0, Math.floor(days.length / 2), days.length - 1]) {
+    svg += `<text x="${xPos(i)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#898781">${days[i].slice(5)}</text>`;
+  }
+  // 折線
+  for (const sr of series) {
+    const pts = sr.values.map((v, i) => `${xPos(i).toFixed(1)},${yPos(v).toFixed(1)}`).join(" ");
+    svg += `<polyline points="${pts}" fill="none" stroke="${sr.color}" stroke-width="2"
+             stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  svg += `<line id="crossline" x1="0" y1="${padT}" x2="0" y2="${padT + ih}"
+           stroke="#898781" stroke-width="1" opacity="0"/>`;
+  svg += `</svg>`;
+  el.innerHTML = svg;
+  const svgEl = el.querySelector("svg");
+  const cross = el.querySelector("#crossline");
+  svgEl.onmousemove = ev => {
+    const rect = svgEl.getBoundingClientRect();
+    const relX = (ev.clientX - rect.left) / rect.width * W;
+    const i = Math.max(0, Math.min(days.length - 1,
+      Math.round((relX - padL) / iw * (days.length - 1))));
+    cross.setAttribute("x1", xPos(i)); cross.setAttribute("x2", xPos(i));
+    cross.setAttribute("opacity", "0.6");
+    showTip(ev, `<div class="t-title">${days[i]}</div>` +
+      series.map(sr => `<div class="t-sub"><span style="color:${sr.color}">●</span> ${sr.name}:${sr.values[i]} 篇</div>`).join(""));
+  };
+  svgEl.onmouseleave = () => { cross.setAttribute("opacity", "0"); hideTip(); };
 }
 
 /* ---------- 關鍵字結果(文字雲點擊) ---------- */

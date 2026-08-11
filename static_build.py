@@ -13,7 +13,7 @@ from pathlib import Path
 
 from config import BASE_DIR, INDUSTRIES
 from db import get_conn, query_articles, latest_fetch_status
-from analysis.keywords import top_keywords
+from analysis.keywords import article_words, top_from_wordsets, rising_words
 from analysis.companies import build_watchlist, build_stock_quotes_by_abbr
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
@@ -53,24 +53,43 @@ def build():
     (DATA_DIR / "articles.json").write_text(
         json.dumps(slim, ensure_ascii=False), encoding="utf-8")
 
-    # 各預設期間之關鍵字詞頻(文字雲)
-    presets = {
-        "7d": now - timedelta(days=7),
-        "30d": now - timedelta(days=30),
-        "90d": now - timedelta(days=90),
-        "ytd": now.replace(month=1, day=1, hour=0, minute=0, second=0),
-    }
-    # 每期間一組全產業詞頻 + 每產業各一組(供產業籤切換文字雲)
+    # 各預設期間之關鍵字詞頻(文字雲)+ 竄升詞(本期 vs 等長前期)
+    # 先對全部文章做一次斷詞,之後各期間/產業子集合以集合運算統計,避免重複斷詞
+    seg = [(article_words(a), a.get("industry"), a.get("published_at") or "")
+           for a in articles]
+
+    def window(start_s, end_s=None):
+        return [(w, ind) for w, ind, d in seg
+                if d >= start_s and (end_s is None or d < end_s)]
+
+    presets = {"7d": 7, "30d": 30, "90d": 90}
     keywords = {}
-    for key, start_dt in presets.items():
-        start_s = start_dt.strftime("%Y-%m-%d")
-        subset = [a for a in articles if (a.get("published_at") or "") >= start_s]
-        group = {"all": top_keywords(subset, limit=40)}
-        for ind in INDUSTRIES:
-            sub_i = [a for a in subset if a.get("industry") == ind]
-            if sub_i:
-                group[ind] = top_keywords(sub_i, limit=40)
+    for key, days in presets.items():
+        cur_start = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+        prev_start = (now - timedelta(days=days * 2)).strftime("%Y-%m-%d")
+        group = {}
+        for scope in ["all"] + list(INDUSTRIES):
+            cur = [(w, i) for w, i in window(cur_start)
+                   if scope == "all" or i == scope]
+            if not cur:
+                continue
+            prev = [(w, i) for w, i in window(prev_start, cur_start)
+                    if scope == "all" or i == scope]
+            # 前期資料量不足(冷啟動期)時,成長倍數無意義 → 不提供竄升詞
+            enough_prev = len(prev) >= max(20, len(cur) * 0.3)
+            group[scope] = {
+                "top": top_from_wordsets(cur, limit=40),
+                "rising": rising_words(cur, prev) if enough_prev else [],
+            }
         keywords[key] = group
+    # YTD:無等長前期可比,僅提供 top 詞
+    ytd_start = now.replace(month=1, day=1).strftime("%Y-%m-%d")
+    ytd_group = {}
+    for scope in ["all"] + list(INDUSTRIES):
+        cur = [(w, i) for w, i in window(ytd_start) if scope == "all" or i == scope]
+        if cur:
+            ytd_group[scope] = {"top": top_from_wordsets(cur, limit=40), "rising": []}
+    keywords["ytd"] = ytd_group
     (DATA_DIR / "keywords.json").write_text(
         json.dumps(keywords, ensure_ascii=False), encoding="utf-8")
 

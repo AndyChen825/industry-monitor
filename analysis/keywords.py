@@ -30,6 +30,60 @@ STOPWORDS = set("""
 """.split())
 
 
+def article_words(article):
+    """單篇文章斷詞(去重、濾停用詞),供大量子集合統計時預先計算。"""
+    text = (article.get("title") or "") + " " + (article.get("summary") or "")
+    words = set()
+    for w in jieba.cut(text):
+        w = w.strip()
+        if len(w) < 2 or w in STOPWORDS:
+            continue
+        if not any("一" <= ch <= "鿿" or ch.isalpha() for ch in w):
+            continue
+        words.add(w)
+    return words
+
+
+def top_from_wordsets(wordsets, limit=40):
+    """由預先斷詞的 [(words, industry)] 統計詞頻。回傳格式同 top_keywords。"""
+    counter = Counter()
+    industry_votes = {}
+    for words, ind in wordsets:
+        for w in words:
+            counter[w] += 1
+            if ind:
+                industry_votes.setdefault(w, Counter())[ind] += 1
+    result = []
+    for w, cnt in counter.most_common(limit):
+        votes = industry_votes.get(w)
+        main_ind = votes.most_common(1)[0][0] if votes else None
+        result.append({"word": w, "count": cnt, "industry": main_ind})
+    return result
+
+
+def rising_words(cur_wordsets, prev_wordsets, limit=12, min_count=3, min_growth=0.5):
+    """竄升關鍵字:本期相較前一期成長最快的詞。
+
+    回傳 [{"word", "count", "prev", "growth", "industry"}],
+    growth = (本期-前期)/max(前期,1),僅收本期 ≥ min_count 且成長 > min_growth 者。
+    """
+    cur = {w["word"]: w for w in top_from_wordsets(cur_wordsets, limit=300)}
+    prev = {w["word"]: w["count"] for w in top_from_wordsets(prev_wordsets, limit=300)}
+    out = []
+    for word, info in cur.items():
+        c = info["count"]
+        if c < min_count:
+            continue
+        p = prev.get(word, 0)
+        growth = (c - p) / max(p, 1)
+        if growth <= min_growth:
+            continue
+        out.append({"word": word, "count": c, "prev": p,
+                    "growth": round(growth, 2), "industry": info.get("industry")})
+    out.sort(key=lambda x: (-x["growth"], -x["count"]))
+    return out[:limit]
+
+
 def top_keywords(articles, limit=40):
     """回傳 [(詞, 次數, 主要產業)],依詞頻排序。
 
