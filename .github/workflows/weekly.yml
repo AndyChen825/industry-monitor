@@ -32,6 +32,9 @@ jobs:
       - name: 抓取各來源新資料(增量更新)
         run: python main.py fetch
 
+      - name: 以最新規則重新歸類全部文章
+        run: python main.py reclassify
+
       - name: 產出靜態網站與週報
         run: python static_build.py
 

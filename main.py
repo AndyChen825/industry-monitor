@@ -91,6 +91,22 @@ def run_report(days=7, start=None, end=None, title=None):
     return path
 
 
+def run_reclassify():
+    """以最新歸類規則重新歸類資料庫全部文章(規則演進後保持一致)。"""
+    conn = get_conn()
+    rows = conn.execute("SELECT id, title, summary, industry FROM articles").fetchall()
+    changed = 0
+    for r in rows:
+        new_ind = classify(r["title"], r["summary"] or "")
+        if new_ind != r["industry"]:
+            conn.execute("UPDATE articles SET industry = ? WHERE id = ?", (new_ind, r["id"]))
+            changed += 1
+    conn.commit()
+    conn.close()
+    logger.info("重新歸類完成:%d 筆變更 / 共 %d 筆", changed, len(rows))
+    return changed
+
+
 def run_weekly():
     """排程進入點:抓取 → 產出上週(週一至週日)週報。"""
     logger.info("=== 每週自動更新開始 ===")
@@ -120,6 +136,7 @@ def main():
     p_report.add_argument("--end")
 
     sub.add_parser("weekly", help="排程用:抓取+產出上週週報")
+    sub.add_parser("reclassify", help="以最新規則重新歸類全部文章")
 
     p_serve = sub.add_parser("serve", help="啟動網頁介面")
     p_serve.add_argument("--port", type=int, default=8000)
@@ -132,6 +149,8 @@ def main():
         print(run_report(days=args.days, start=args.start, end=args.end))
     elif args.cmd == "weekly":
         run_weekly()
+    elif args.cmd == "reclassify":
+        run_reclassify()
     elif args.cmd == "serve":
         import uvicorn
         uvicorn.run("app.main:app", host="127.0.0.1", port=args.port)
