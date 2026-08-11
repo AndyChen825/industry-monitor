@@ -95,6 +95,29 @@ def build():
 
     watchlist = build_watchlist()
 
+    # 品牌關聯字:近 90 天內提及 ≥3 篇之公司,統計其報導中最常共同出現的詞
+    # (排除公司自身別名;供公司搜尋頁顯示「媒體把這家公司跟什麼綁在一起」)
+    from analysis.companies import make_matcher
+    texts = [f"{a['title']} {a.get('summary') or ''} {a.get('source') or ''}"
+             for a in articles]
+    company_aliases = {}
+    for comps in watchlist.values():
+        for name, aliases in comps.items():
+            company_aliases.setdefault(name, set()).update(aliases)
+    assoc = {}
+    cut90 = (now - timedelta(days=90)).strftime("%Y-%m-%d")
+    for name, aliases in company_aliases.items():
+        match = make_matcher(sorted(aliases))
+        hits = [(seg[i][0], seg[i][1]) for i in range(len(articles))
+                if seg[i][2] >= cut90 and match(texts[i])]
+        if len(hits) < 3:
+            continue
+        top = top_from_wordsets(hits, limit=25)
+        out = [w for w in top
+               if not any(w["word"] in al or al in w["word"] for al in aliases)][:12]
+        if out:
+            assoc[name] = [{"word": w["word"], "count": w["count"]} for w in out]
+
     # 當週 Word 報告:僅於週一產出(或設 FORCE_REPORT=1 強制、或尚無任何報告時)
     import os
     existing = list(REPORTS_DIR.glob("*.docx"))
@@ -137,6 +160,7 @@ def build():
     alert_cut = (now - timedelta(days=7)).strftime("%Y-%m-%d")
     recent = [a for a in articles if (a.get("published_at") or "") >= alert_cut]
     meta["alerts"] = negative_alerts(recent)
+    meta["assoc"] = assoc   # 品牌關聯字(近 90 天)
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
 

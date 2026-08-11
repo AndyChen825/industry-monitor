@@ -714,6 +714,39 @@ function drawTrendChart(el, series, days) {
   svgEl.onmouseleave = () => { cross.setAttribute("opacity", "0"); hideTip(); };
 }
 
+/* ---------- 公司洞察:品牌關聯字 + 媒體來源分佈 ---------- */
+function companyInsightsHTML(name, news) {
+  let html = "";
+  // 品牌關聯字(近 90 天,預先計算;僅觀察清單公司)
+  const canonical = findCanonicalCompany(name);
+  const assoc = canonical ? (META.assoc || {})[canonical] : null;
+  if (assoc && assoc.length) {
+    html += `<h3 class="section">品牌關聯字 — 媒體最常把「${canonical}」與這些詞放在一起(近 90 天)</h3>
+      <div class="chips">` + assoc.map(w =>
+        `<span class="chip" onclick="showKeywordResults('${w.word}')">
+           ${w.word} <span style="color:var(--muted)">${w.count}</span></span>`).join("") +
+      `</div>`;
+  }
+  // 媒體來源分佈(依目前搜尋結果統計)
+  if (news.length) {
+    const bySource = {};
+    for (const n of news) bySource[n.source] = (bySource[n.source] || 0) + 1;
+    const top = Object.entries(bySource).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const maxCount = top[0][1];
+    html += `<h3 class="section">媒體來源分佈(前 10)</h3><div class="card">` +
+      top.map(([src, c]) =>
+        `<div style="display:flex;align-items:center;gap:10px;margin:5px 0">
+           <span style="width:190px;font-size:13px;color:var(--ink-2);text-align:right;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${src}</span>
+           <span style="flex:1;display:flex;align-items:center;gap:8px">
+             <span style="display:inline-block;height:14px;border-radius:3px;background:var(--c1);
+                          width:${Math.max(2, c / maxCount * 60).toFixed(1)}%"></span>
+             <span style="font-size:12px;color:var(--muted)">${c} 篇</span></span>
+         </div>`).join("") + `</div>`;
+  }
+  return html;
+}
+
 /* ---------- 關鍵字結果(文字雲點擊) ---------- */
 function showKeywordResults(word) {
   $("dashboard").style.display = "none";
@@ -736,13 +769,26 @@ function findWatchAliases(name) {
   return null;
 }
 
+function findCanonicalCompany(name) {
+  // 輸入別名(如 ASUS)時回推觀察清單的正式名稱(華碩)
+  for (const companies of Object.values(META.watchlist || {})) {
+    if (companies[name]) return name;
+    for (const [key, aliases] of Object.entries(companies)) {
+      if (aliases.includes(name)) return key;
+    }
+  }
+  return null;
+}
+
 function searchCompany() {
   const name = $("company").value.trim();
   if (!name) { alert("請輸入公司名稱關鍵字"); return; }
   $("dashboard").style.display = "none";
   const [s, e] = resolvePeriod();
   let news;
-  const aliases = findWatchAliases(name);
+  const canonicalName = findCanonicalCompany(name);
+  const aliases = findWatchAliases(name) ||
+    (canonicalName ? findWatchAliases(canonicalName) : null);
   if (aliases) {   // 觀察清單公司:以別名比對(中英文皆涵蓋)
     const match = aliasMatcher(aliases);
     const endFull = e + "T23:59:59";
@@ -755,6 +801,7 @@ function searchCompany() {
   html += `<div class="note">商工登記資料(統編、登記地址、資本額、變更紀錄)請至
     <a href="${FINDBIZ_URL}" target="_blank" rel="noopener" style="color:#fab219">
     經濟部商工登記公示資料查詢服務</a> 查詢(該站含驗證碼,無法自動查詢)。</div>`;
+  html += companyInsightsHTML(name, news);
   html += `<h3 class="section">相關報導(${news.length} 筆)</h3>`;
   html += news.slice(0, 200).map(cardHTML).join("") ||
     `<div class="note">資料不足:期間內無相關報導。</div>`;
