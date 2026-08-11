@@ -72,6 +72,7 @@ def fetch_stock_quotes():
     回傳 {股票代號: {"close": 收盤價, "pct": 漲跌幅%}}。
     """
     quotes = {}
+    quote_date = None
     for url, code_key, close_key, change_key in QUOTE_APIS:
         resp = http_get(url, check_robots=False)  # 官方開放 API
         if resp is None:
@@ -86,9 +87,15 @@ def fetch_stock_quotes():
             change = _to_float(row.get(change_key))
             if not code or close is None or change is None:
                 continue
+            if quote_date is None:
+                d = str(row.get("Date", "")).strip()
+                if len(d) == 7 and d.isdigit():   # 民國 1150810 → 2026-08-10
+                    quote_date = f"{int(d[:3]) + 1911}-{d[3:5]}-{d[5:7]}"
             prev = close - change
             pct = (change / prev * 100) if prev else 0.0
             quotes[code] = {"close": close, "pct": round(pct, 2)}
+    if quote_date:
+        quotes["_date"] = quote_date
     if quotes:
         QUOTES_CACHE.write_text(json.dumps(quotes, ensure_ascii=False), encoding="utf-8")
         return quotes
@@ -99,7 +106,10 @@ def fetch_stock_quotes():
 
 
 def build_stock_quotes_by_abbr():
-    """以公司簡稱為鍵之行情表:{簡稱: {"code", "close", "pct"}}。"""
+    """以公司簡稱為鍵之行情表。
+
+    回傳 (行情dict, 行情日期):{簡稱: {"code", "close", "pct"}}, "YYYY-MM-DD"。
+    """
     abbr_code = {}
     for row in fetch_listed_companies():
         abbr = str(row.get("公司簡稱", "")).strip()
@@ -107,12 +117,13 @@ def build_stock_quotes_by_abbr():
         if abbr and code and len(abbr) >= 2 and abbr not in AMBIGUOUS_ABBRS:
             abbr_code[abbr] = code
     quotes = fetch_stock_quotes()
+    quote_date = quotes.get("_date")
     result = {}
     for abbr, code in abbr_code.items():
         q = quotes.get(code)
         if q:
             result[abbr] = {"code": code, "close": q["close"], "pct": q["pct"]}
-    return result
+    return result, quote_date
 
 
 def fetch_listed_companies():

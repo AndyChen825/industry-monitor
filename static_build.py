@@ -104,8 +104,9 @@ def build():
         "fetch_status": status,
         "reports": report_files,
         "watchlist": watchlist,
-        "quotes": build_stock_quotes_by_abbr(),   # 上市櫃最近收盤價與漲跌幅
     }
+    # 上市櫃最近收盤價與漲跌幅(附行情所屬日期)
+    meta["quotes"], meta["quotes_date"] = build_stock_quotes_by_abbr()
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
 

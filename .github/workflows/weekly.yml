@@ -5,6 +5,8 @@ on:
     # 每天 12:00(台北時間,UTC+8)= 04:00 UTC 抓取資料;
     # Word 週報由 static_build.py 僅於週一產出
     - cron: "0 4 * * *"
+    # 平日 17:30(台北)= 09:30 UTC 收盤後再更新一次,取得當日收盤行情
+    - cron: "30 9 * * 1-5"
   workflow_dispatch: {}   # 允許在 GitHub 網頁上手動觸發
 
 permissions:

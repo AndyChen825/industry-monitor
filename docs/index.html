@@ -379,9 +379,10 @@ function renderCompanyTreemap(periodArticles) {
   if (!industry) { panel.style.display = "none"; return; }
   panel.style.display = "";
   $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
+  const qd = META.quotes_date ? `,行情日期 ${META.quotes_date}` : "";
   $("cpSub").textContent =
-    "面積 = 期間內被提及篇數(前 15 大,其餘合併為「其他」);色塊顏色 = 最近收盤漲跌" +
-    "(漲紅跌綠、深淺 = 幅度;灰色 = 非上市櫃或無行情)。點擊區塊可查看該公司相關報導;" +
+    "面積 = 期間內被提及篇數(前 15 大,其餘合併為「其他」);色塊顏色 = 收盤漲跌" +
+    `(漲紅跌綠、深淺 = 幅度;灰色 = 非上市櫃或無行情${qd})。點擊區塊可查看該公司相關報導;` +
     "同名詞彙可能造成少量誤計。";
   el.innerHTML = "";
   const counts = {};
@@ -445,7 +446,8 @@ function renderCompanyTreemap(periodArticles) {
       div.onmouseleave = hideTip;
     } else {
       const quoteTip = q
-        ? `<div class="t-sub">股價 ${q.close}(${q.pct > 0 ? "+" : ""}${q.pct.toFixed(2)}%,最近收盤)· 代號 ${q.code}</div>`
+        ? `<div class="t-sub">收盤 ${q.close}(${q.pct > 0 ? "+" : ""}${q.pct.toFixed(2)}%` +
+          (META.quotes_date ? `,${META.quotes_date}` : "") + `)· 代號 ${q.code}</div>`
         : "";
       div.onmousemove = ev => showTip(ev,
         `<div class="t-title">${label}</div>
