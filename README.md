@@ -69,6 +69,15 @@ powershell -ExecutionPolicy Bypass -File scheduler_setup\setup_windows.ps1
 
 每週一 12:00 自動:抓取新資料 → 更新資料庫 → 產出上週週報至 `reports/`。
 
+## 自動通知
+
+每次雲端更新後,系統自動檢查並於必要時**開 GitHub Issue**(GitHub 會寄 email 給關注者):
+
+- **負面聲量警示**:觀察名單公司首次出現疑似負面報導、或篇數較上次通知倍增(≥3 篇)
+- **來源健康**:應可抓取之來源連續 3 次失敗(同一來源 7 天內不重複通知)
+
+通知狀態記錄於 `data/alert_state.json`;若要收到 email,請確認 GitHub 帳號有 Watch 本 repo(Participating and @mentions 即可,Issue 內會 @ 擁有者)。
+
 ## 產業分類
 
 11 大類對照行政院主計總處[「行業統計分類」](https://www.stat.gov.tw/standardindustrialclassification.aspx?n=3144&sms=0&rid=8)(對照代碼見 `config.py`),以關鍵字比對自動歸類;無法歸類的文章保留於資料庫但不列入產業摘要。關鍵字表可於 `config.py` 之 `INDUSTRIES` 自行增修。
