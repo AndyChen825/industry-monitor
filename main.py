@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 from config import SOURCE_MODULES, LOG_DIR
 from db import get_conn, upsert_articles, log_fetch, query_articles, latest_fetch_status
-from analysis.classifier import classify_articles
+from analysis.classifier import classify_articles, classify
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
 
