@@ -39,10 +39,11 @@ jobs:
       - name: 產出靜態網站與週報
         run: python static_build.py
 
-      - name: 負面警示與來源健康通知(開 Issue)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python notify_alerts.py
+      # 自動通知(開 Issue + email)暫停用;要恢復時取消以下註解即可
+      # - name: 負面警示與來源健康通知(開 Issue)
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: python notify_alerts.py
 
       - name: 提交更新後的資料與網站
         run: |
