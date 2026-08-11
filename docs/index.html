@@ -53,6 +53,7 @@
   .tm-block.tm-center { display: flex; align-items: center; justify-content: center;
                         text-align: center; border: 1px solid rgba(16,185,129,0.45); }
   .tm-block.tm-center .tm-label { position: static; left: auto; top: auto; right: auto; padding: 0 6px; }
+  .tm-quote { display: block; font-size: 11px; font-weight: 700; margin-top: 1px; }
   .tm-name { font-size: 12px; font-weight: 600; display: block;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tm-count { font-size: 11px; opacity: .82; }
@@ -371,7 +372,8 @@ function renderCompanyTreemap(periodArticles) {
   $("cpTitle").textContent = `公司聲量樹狀圖 — ${industry}`;
   $("cpSub").textContent =
     "依全體上市櫃公司名錄+自訂品牌清單,自動比對期間內報導之標題與內容,統計各公司被提及篇數" +
-    "(顯示前 15 大,其餘合併為「其他」);點擊區塊可查看該公司相關報導。同名詞彙可能造成少量誤計。";
+    "(顯示前 15 大,其餘合併為「其他」);上市櫃公司附最近收盤價與漲跌幅(漲紅跌綠,每日更新時同步)。" +
+    "點擊區塊可查看該公司相關報導。同名詞彙可能造成少量誤計。";
   el.innerHTML = "";
   const counts = {};
   const matchers = Object.entries(wl[industry]).map(([name, aliases]) =>
@@ -417,10 +419,18 @@ function renderCompanyTreemap(periodArticles) {
         : `background:${COMPANY_GREEN(t)};`);
     const displayCount = isOther ? restInfo.sum : r.item.value;
     const pct = (displayCount / trueTotal * 100).toFixed(1);
+    const q = isOther ? null : (META.quotes || {})[r.item.key];
     if (r.w > 50 && r.h > 26) {
+      let quoteHtml = "";
+      if (q && r.h > 46) {   // 台股慣例:漲紅跌綠
+        const qc = q.pct > 0 ? "#ff8585" : (q.pct < 0 ? "#7ee2b8" : "#c3c2b7");
+        const arrow = q.pct > 0 ? "▲" : (q.pct < 0 ? "▼" : "–");
+        quoteHtml = `<span class="tm-quote" style="color:${qc}">
+          ${q.close} ${arrow}${Math.abs(q.pct).toFixed(2)}%</span>`;
+      }
       div.innerHTML = `<span class="tm-label" style="color:${isOther ? "var(--ink-2)" : "#fff"}">
         <span class="tm-name">${label}</span>
-        <span class="tm-count">${displayCount} 篇</span></span>`;
+        <span class="tm-count">${displayCount} 篇</span>${quoteHtml}</span>`;
     }
     if (isOther) {
       div.onmousemove = ev => showTip(ev,
@@ -429,10 +439,14 @@ function renderCompanyTreemap(periodArticles) {
          <div class="t-sub">${restInfo.names.join("、")}${restInfo.count > 8 ? "…" : ""}</div>`);
       div.onmouseleave = hideTip;
     } else {
+      const quoteTip = q
+        ? `<div class="t-sub">股價 ${q.close}(${q.pct > 0 ? "+" : ""}${q.pct.toFixed(2)}%,最近收盤)· 代號 ${q.code}</div>`
+        : "";
       div.onmousemove = ev => showTip(ev,
         `<div class="t-title">${label}</div>
-         <div class="t-sub">${r.item.value} 篇報導提及 · 佔清單公司總聲量 ${pct}%</div>
-         <div class="t-sub">點擊查看相關報導</div>`);
+         <div class="t-sub">${r.item.value} 篇報導提及 · 佔清單公司總聲量 ${pct}%</div>` +
+        quoteTip +
+        `<div class="t-sub">點擊查看相關報導</div>`);
       div.onmouseleave = hideTip;
       div.onclick = () => {
         hideTip();

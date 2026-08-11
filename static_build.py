@@ -14,7 +14,7 @@ from pathlib import Path
 from config import BASE_DIR, INDUSTRIES
 from db import get_conn, query_articles, latest_fetch_status
 from analysis.keywords import top_keywords
-from analysis.companies import build_watchlist
+from analysis.companies import build_watchlist, build_stock_quotes_by_abbr
 
 TZ_TAIPEI = timezone(timedelta(hours=8))
 DOCS_DIR = BASE_DIR / "docs"
@@ -104,6 +104,7 @@ def build():
         "fetch_status": status,
         "reports": report_files,
         "watchlist": watchlist,
+        "quotes": build_stock_quotes_by_abbr(),   # 上市櫃最近收盤價與漲跌幅
     }
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")

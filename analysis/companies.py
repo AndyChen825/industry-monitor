@@ -47,6 +47,73 @@ COMPANY_LIST_APIS = [
     "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap03_O",  # 上櫃
 ]
 
+QUOTES_CACHE = BASE_DIR / "data" / "stock_quotes.json"
+
+# 每日收盤行情(官方開放 API;盤中執行時取得的是最近一個交易日收盤)
+QUOTE_APIS = [
+    # (網址, 代號欄, 收盤欄, 漲跌欄)
+    ("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+     "Code", "ClosingPrice", "Change"),
+    ("https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes",
+     "SecuritiesCompanyCode", "Close", "Change"),
+]
+
+
+def _to_float(v):
+    try:
+        return float(str(v).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def fetch_stock_quotes():
+    """取得全體上市櫃最近收盤價與漲跌;失敗時退回快取。
+
+    回傳 {股票代號: {"close": 收盤價, "pct": 漲跌幅%}}。
+    """
+    quotes = {}
+    for url, code_key, close_key, change_key in QUOTE_APIS:
+        resp = http_get(url, check_robots=False)  # 官方開放 API
+        if resp is None:
+            continue
+        try:
+            rows = resp.json()
+        except ValueError:
+            continue
+        for row in rows:
+            code = str(row.get(code_key, "")).strip()
+            close = _to_float(row.get(close_key))
+            change = _to_float(row.get(change_key))
+            if not code or close is None or change is None:
+                continue
+            prev = close - change
+            pct = (change / prev * 100) if prev else 0.0
+            quotes[code] = {"close": close, "pct": round(pct, 2)}
+    if quotes:
+        QUOTES_CACHE.write_text(json.dumps(quotes, ensure_ascii=False), encoding="utf-8")
+        return quotes
+    if QUOTES_CACHE.exists():
+        logger.warning("行情 API 失敗,使用上次快取")
+        return json.loads(QUOTES_CACHE.read_text(encoding="utf-8"))
+    return {}
+
+
+def build_stock_quotes_by_abbr():
+    """以公司簡稱為鍵之行情表:{簡稱: {"code", "close", "pct"}}。"""
+    abbr_code = {}
+    for row in fetch_listed_companies():
+        abbr = str(row.get("公司簡稱", "")).strip()
+        code = str(row.get("公司代號", "")).strip()
+        if abbr and code and len(abbr) >= 2 and abbr not in AMBIGUOUS_ABBRS:
+            abbr_code[abbr] = code
+    quotes = fetch_stock_quotes()
+    result = {}
+    for abbr, code in abbr_code.items():
+        q = quotes.get(code)
+        if q:
+            result[abbr] = {"code": code, "close": q["close"], "pct": q["pct"]}
+    return result
+
 
 def fetch_listed_companies():
     """取得全體上市櫃公司(簡稱+產業別);失敗時退回快取。"""
