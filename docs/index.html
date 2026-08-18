@@ -308,14 +308,17 @@ function moveTip(ev) {
 function hideTip() { tip.style.display = "none"; }
 
 /* ---------- 資料載入(靜態 JSON,一次載入後全在瀏覽器端運算) ---------- */
+let FULL_LOADED = false, FULL_PROMISE = null;
+const _v = () => "?v=" + Math.floor(Date.now() / 600000);   // 10 分鐘快取窗
+
 async function initData() {
-  $("status").textContent = "載入資料中(約 1~3MB,首次開啟或網速較慢時需數秒)…";
-  const v = "?v=" + Math.floor(Date.now() / 600000);   // 10 分鐘快取窗
-  const get = f => fetch("data/" + f + v).then(r => {
+  $("status").textContent = "載入資料中…";
+  const get = f => fetch("data/" + f + _v()).then(r => {
     if (!r.ok) throw new Error(f + " HTTP " + r.status);
     return r.json();
   });
   try {
+    // 預設僅載近 7 天(小檔快開);完整歷史於需要時 ensureFull() 背景載入
     const [a, k, m] = await Promise.all([
       get("articles.json"), get("keywords.json"), get("meta.json"),
     ]);
@@ -328,6 +331,40 @@ async function initData() {
       `資料載入失敗(${e.message || "網路中斷"})。` +
       `<button class="btn" style="margin-left:10px" onclick="initData()">重試</button>`;
   }
+}
+
+function ensureFull() {
+  if (FULL_LOADED) return Promise.resolve();
+  if (!FULL_PROMISE) {
+    $("status").textContent = "載入完整歷史資料中(檔案較大,首次需數秒)…";
+    FULL_PROMISE = fetch("data/articles_full.json" + _v())
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(d => { ALL = d; FULL_LOADED = true; })
+      .catch(e => { FULL_PROMISE = null; throw e; });
+  }
+  return FULL_PROMISE;
+}
+
+async function needFullForPeriod() {
+  if ($("period").value === "7d" || FULL_LOADED) return true;
+  try { await ensureFull(); return true; }
+  catch (e) {
+    $("status").innerHTML = `完整資料載入失敗(${e.message})。` +
+      `<button class="btn" style="margin-left:10px" onclick="loadOverview()">重試</button>`;
+    return false;
+  }
+}
+
+/* 由 meta.daily(每日產業篇數統計)彙總期間數字,不需載入全文 */
+function dailyRange(s, e) {
+  const out = { _total: 0 };
+  const daily = META.daily || {};
+  for (const d in daily) {
+    if (d >= s && d <= e) {
+      for (const k in daily[d]) out[k] = (out[k] || 0) + daily[d][k];
+    }
+  }
+  return out;
 }
 
 function filterArticles(startS, endS, industry, keyword) {
@@ -355,27 +392,24 @@ function wowHTML(cur, prev) {
     ${up ? "▲" : "▼"}${Math.abs(pct).toFixed(0)}%</span>`;
 }
 
-function loadOverview() {
+async function loadOverview() {
   $("dashboard").style.display = "";
+  if (!(await needFullForPeriod())) return;
   const [s, e] = resolvePeriod();
   const arts = filterArticles(s, e, currentIndustry, "");
   const allInPeriod = filterArticles(s, e, "", "");
-  const counts = {};
-  for (const a of allInPeriod) {
-    if (a.industry) counts[a.industry] = (counts[a.industry] || 0) + 1;
-  }
-  // 等長前一期(週對週變化)
+  // 產業計數與週對週:由每日統計表彙總(涵蓋完整歷史,不受載入分層影響)
+  const cur = dailyRange(s, e);
   const [ps, pe] = prevPeriodRange(s, e);
-  const prevAll = filterArticles(ps, pe, "", "");
-  const prevCounts = {};
-  for (const a of prevAll) {
-    if (a.industry) prevCounts[a.industry] = (prevCounts[a.industry] || 0) + 1;
-  }
-  $("status").textContent = `期間 ${s} ~ ${e},共 ${arts.length} 筆` +
+  const prev = dailyRange(ps, pe);
+  const counts = {}, prevCounts = {};
+  for (const k in cur) if (k !== "_total") counts[k] = cur[k];
+  for (const k in prev) if (k !== "_total") prevCounts[k] = prev[k];
+  $("status").textContent = `期間 ${s} ~ ${e},共 ${cur._total} 筆` +
     (currentIndustry ? `(篩選:${currentIndustry})` : "");
-  renderKPIs(allInPeriod, prevAll, counts);
+  renderKPIs(cur, prev, counts);
   renderPinned(s, e);
-  renderChips(counts, prevCounts, prevAll.length, allInPeriod.length);
+  renderChips(counts, prevCounts);
   // 已篩選單一產業時,產業占比圖無意義 → 隱藏,文字雲改為全寬
   if (currentIndustry) {
     $("industryPanel").style.display = "none";
@@ -408,15 +442,15 @@ function renderChips(counts, prevCounts, prevTotal, curTotal) {
 }
 
 /* ---------- KPI 統計列 ---------- */
-function renderKPIs(allInPeriod, prevAll, counts) {
-  const classified = allInPeriod.filter(a => a.industry).length;
-  const industriesCovered = Object.keys(counts).length;
+function renderKPIs(cur, prev, counts) {
+  const classified = Object.values(counts).reduce((a, b) => a + b, 0);
+  const industriesCovered = Object.keys(counts).filter(k => counts[k] > 0).length;
   const alertCompanies = (META.alerts || []).length;
   const kpis = [
-    { label: "本期報導數", value: allInPeriod.length,
-      sub: prevAll.length ? `前期 ${prevAll.length}` : "", wow: wowHTML(allInPeriod.length, prevAll.length) },
+    { label: "本期報導數", value: cur._total,
+      sub: prev._total ? `前期 ${prev._total}` : "", wow: wowHTML(cur._total, prev._total) },
     { label: "可歸類報導", value: classified,
-      sub: allInPeriod.length ? `佔 ${(classified / allInPeriod.length * 100).toFixed(0)}%` : "" },
+      sub: cur._total ? `佔 ${(classified / cur._total * 100).toFixed(0)}%` : "" },
     { label: "涵蓋產業", value: industriesCovered, sub: "共 11 類" },
     { label: "負面警示(近7天)", value: alertCompanies, sub: alertCompanies ? "家公司,見上方警示列" : "無" },
   ];
@@ -903,8 +937,9 @@ function companyInsightsHTML(name, news) {
 }
 
 /* ---------- 關鍵字結果(文字雲點擊) ---------- */
-function showKeywordResults(word) {
+async function showKeywordResults(word) {
   $("dashboard").style.display = "none";
+  if (!(await needFullForPeriod())) return;
   const [s, e] = resolvePeriod();
   const news = filterArticles(s, e, "", word);
   let html = `<h2 class="section">關鍵字「${word}」相關報導(期間 ${s} ~ ${e},共 ${news.length} 筆)</h2>`;
@@ -935,10 +970,11 @@ function findCanonicalCompany(name) {
   return null;
 }
 
-function searchCompany() {
+async function searchCompany() {
   const name = $("company").value.trim();
   if (!name) { alert("請輸入公司名稱關鍵字"); return; }
   $("dashboard").style.display = "none";
+  if (!(await needFullForPeriod())) return;
   const [s, e] = resolvePeriod();
   let news;
   const canonicalName = findCanonicalCompany(name);

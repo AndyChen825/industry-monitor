@@ -35,23 +35,48 @@ def build():
     articles = query_articles(conn, start_date=since, limit=100000)
     status = latest_fetch_status(conn)
 
-    # 文章資料(僅保留前端需要的欄位;控制檔案大小:
-    # 90 天內全數保留,90 天前僅保留可歸類文章供 YTD 統計/瀏覽)
-    recent_cut = (now - timedelta(days=90)).strftime("%Y-%m-%d")
-    slim = [
-        {
+    # 文章資料檔分層(控制下載量):
+    # - articles.json:近 7 天完整欄位(預設載入,開頁快)
+    # - articles_full.json:完整歷史(切換至 30/90 天/YTD 時才背景載入);
+    #   30 天前僅保留可歸類文章且不含摘要
+    cut7 = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    cut30 = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+
+    def _slim(a, with_summary=True):
+        return {
             "title": a["title"],
-            "summary": (a.get("summary") or "")[:140],
+            "summary": (a.get("summary") or "")[:80] if with_summary else "",
             "source": a["source"],
             "url": a["url"],
             "published_at": a.get("published_at") or "",
             "industry": a.get("industry"),
         }
-        for a in articles
-        if a.get("industry") or (a.get("published_at") or "") >= recent_cut
-    ]
+
+    core = [_slim(a) for a in articles if (a.get("published_at") or "") >= cut7]
+    full = []
+    for a in articles:
+        d = a.get("published_at") or ""
+        if d >= cut30:
+            full.append(_slim(a))
+        elif a.get("industry"):
+            full.append(_slim(a, with_summary=False))
     (DATA_DIR / "articles.json").write_text(
-        json.dumps(slim, ensure_ascii=False), encoding="utf-8")
+        json.dumps(core, ensure_ascii=False), encoding="utf-8")
+    (DATA_DIR / "articles_full.json").write_text(
+        json.dumps(full, ensure_ascii=False), encoding="utf-8")
+    slim = full  # 供後續統計沿用
+
+    # 每日各產業篇數(供前端 KPI/產業計數/週對週,不需載入全文)
+    daily = {}
+    for a in articles:
+        d = (a.get("published_at") or "")[:10]
+        if not d:
+            continue
+        bucket = daily.setdefault(d, {"_total": 0})
+        bucket["_total"] += 1
+        ind = a.get("industry")
+        if ind:
+            bucket[ind] = bucket.get(ind, 0) + 1
 
     # 各預設期間之關鍵字詞頻(文字雲)+ 竄升詞(本期 vs 等長前期)
     # 先對全部文章做一次斷詞,之後各期間/產業子集合以集合運算統計,避免重複斷詞
@@ -163,6 +188,7 @@ def build():
         "fetch_status": status,
         "reports": report_files,
         "watchlist": watchlist,
+        "daily": daily,
     }
     # 上市櫃最近收盤價與漲跌幅(附行情所屬日期)
     meta["quotes"], meta["quotes_date"] = build_stock_quotes_by_abbr()
