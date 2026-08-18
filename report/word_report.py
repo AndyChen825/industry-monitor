@@ -169,6 +169,15 @@ def build_report(articles, start_date, end_date, fetch_status=None,
             p.add_run(f"{ind}:").bold = True
             p.add_run("、".join(f"{n}({c} 篇)" for n, c in ranked))
 
+    # 產業篇數圖 + 每日趨勢圖(圖表失敗不影響報告產出)
+    try:
+        from report.charts import industry_bar_png, daily_trend_png
+        if ind_counts:
+            doc.add_picture(industry_bar_png(dict(ind_counts)), width=Cm(16))
+        doc.add_picture(daily_trend_png(articles, start_date, end_date), width=Cm(16))
+    except Exception:  # noqa: BLE001 — 無 matplotlib/字型等環境問題時略過圖表
+        doc.add_paragraph("(圖表產生失敗,僅提供表格數據)")
+
     # 統計總覽 三、競品 SOV 對比(固定對比組)
     _heading(doc, "三、競品聲量對比(SOV)", 2)
     from config import REPORT_SOV_GROUPS

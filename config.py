@@ -34,6 +34,7 @@ INDUSTRIES = {
             "半導體", "晶圓", "晶片", "IC設計", "台積電", "聯發科", "封測", "面板",
             "PCB", "印刷電路板", "伺服器", "AI晶片", "記憶體", "DRAM", "光學",
             "華碩", "筆電", "主機板", "顯示卡",
+            "semiconductor", "GPU", "CPU", "laptop", "chip", "chipmaker",
             "電子零組件", "被動元件", "砷化鎵", "矽光子", "先進製程", "CoWoS",
         ],
     },
@@ -142,6 +143,9 @@ SOURCE_MODULES = [
     ("technews",       "科技新報",      "科技新創"),
     ("official_sites", "企業官網",      "企業官網"),
     ("twse_mops",      "證交所重大訊息", "官方公告"),
+    ("theverge",       "The Verge",     "國際科技"),
+    ("tomshardware",   "Tom's Hardware", "國際科技"),
+    ("engadget",       "Engadget",      "國際科技"),
 ]
 
 # 商工登記(公司情報)另由 fetchers/findbiz.py 提供,不在新聞來源清單內。

@@ -16,33 +16,62 @@
   }
   * { box-sizing: border-box; }
   body { font-family: "Microsoft JhengHei", system-ui, "Segoe UI", sans-serif;
-         margin: 0; background: var(--page); color: var(--ink-2); }
-  header { display: flex; align-items: center; gap: 16px; padding: 14px 28px;
-           background: var(--surface); border-bottom: 1px solid var(--border);
+         margin: 0; color: var(--ink-2);
+         background: radial-gradient(1200px 500px at 20% -10%, #12203a 0%, var(--page) 55%),
+                     var(--page); background-attachment: fixed; }
+  ::selection { background: rgba(57,135,229,0.4); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  header { display: flex; align-items: center; gap: 14px; padding: 14px 28px;
+           background: linear-gradient(90deg, rgba(57,135,229,0.10), rgba(16,185,129,0.05) 40%, transparent 70%),
+                       rgba(26,26,25,0.92);
+           backdrop-filter: blur(8px);
+           border-bottom: 1px solid var(--border);
            position: sticky; top: 0; z-index: 10; flex-wrap: wrap; }
-  header h1 { margin: 0; font-size: 18px; color: var(--ink); font-weight: 600; }
+  .brand-mark { width: 12px; height: 26px; border-radius: 4px;
+                background: linear-gradient(180deg, var(--c1), #10b981); }
+  header h1 { margin: 0; font-size: 18px; color: var(--ink); font-weight: 700;
+              letter-spacing: 0.5px; }
   header .spacer { flex: 1; }
   #updated { font-size: 12px; color: var(--muted); }
-  .btn { padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
-         border: 1px solid var(--border); background: var(--surface-2); color: var(--ink); }
-  .btn:hover { background: #2e2e2c; }
-  .btn.primary { background: var(--c1); border-color: transparent; }
-  .btn.primary:hover { background: #2a78d6; }
+  .btn { padding: 8px 16px; border-radius: 999px; font-size: 14px; cursor: pointer;
+         border: 1px solid var(--border); background: var(--surface-2); color: var(--ink);
+         transition: transform .12s, background .12s, box-shadow .12s; }
+  .btn:hover { background: #2e2e2c; transform: translateY(-1px); }
+  .btn.primary { background: linear-gradient(135deg, #3987e5, #2a6ec4); border-color: transparent;
+                 box-shadow: 0 2px 10px rgba(57,135,229,0.35); }
+  .btn.primary:hover { box-shadow: 0 4px 14px rgba(57,135,229,0.5); }
   .btn.home { background: transparent; border-color: var(--c1); color: var(--c1); font-weight: 600; }
   .btn.home:hover { background: rgba(57,135,229,0.12); }
   .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px 28px;
-         background: var(--surface); border-bottom: 1px solid var(--border); }
+         background: rgba(26,26,25,0.7); border-bottom: 1px solid var(--border); }
   .bar label { font-size: 13px; color: var(--muted); }
-  select, input { padding: 8px 10px; border: 1px solid var(--grid); border-radius: 8px;
-                  font-size: 14px; background: var(--page); color: var(--ink); }
+  select, input { padding: 8px 12px; border: 1px solid var(--grid); border-radius: 10px;
+                  font-size: 14px; background: var(--page); color: var(--ink);
+                  transition: border-color .12s; }
+  select:focus, input:focus { outline: none; border-color: var(--c1); }
   input::placeholder { color: var(--muted); }
   main { padding: 22px 28px; max-width: 1280px; margin: 0 auto; }
   #status { font-size: 13px; color: var(--muted); margin: 0 0 12px; min-height: 18px; }
+  /* KPI 統計列 */
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+             gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+         padding: 14px 18px; transition: transform .12s, border-color .12s; }
+  .kpi:hover { transform: translateY(-2px); border-color: rgba(57,135,229,0.4); }
+  .kpi .k-label { font-size: 12px; color: var(--muted); }
+  .kpi .k-value { font-size: 24px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+  .kpi .k-sub { font-size: 11px; color: var(--muted); }
   .viz-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; margin-bottom: 18px; }
   @media (max-width: 900px) { .viz-grid { grid-template-columns: 1fr; } }
   .panel { background: var(--surface); border: 1px solid var(--border);
-           border-radius: 12px; padding: 16px 18px; }
-  .panel h2 { margin: 0 0 4px; font-size: 15px; color: var(--ink); font-weight: 600; }
+           border-radius: 14px; padding: 16px 20px;
+           box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+  .panel h2 { margin: 0 0 10px; font-size: 15px; color: var(--ink); font-weight: 700;
+              display: flex; align-items: center; gap: 8px; }
+  .panel h2::before { content: ""; width: 4px; height: 16px; border-radius: 2px;
+                      background: linear-gradient(180deg, var(--c1), #10b981); }
   .panel .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
   #treemap { width: 100%; height: 340px; position: relative; }
   .tm-block { position: absolute; border-radius: 6px; cursor: pointer; overflow: hidden;
@@ -85,15 +114,31 @@
   .wc-word { cursor: pointer; line-height: 1.25; transition: filter .12s; }
   .wc-word:hover { filter: brightness(1.3); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
-  .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px;
-          border-radius: 16px; font-size: 13px; cursor: pointer;
-          background: var(--surface); border: 1px solid var(--border); color: var(--ink-2); }
-  .chip:hover { background: var(--surface-2); }
+  .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 14px;
+          border-radius: 999px; font-size: 13px; cursor: pointer;
+          background: var(--surface); border: 1px solid var(--border); color: var(--ink-2);
+          transition: transform .12s, border-color .12s, background .12s; }
+  .chip:hover { background: var(--surface-2); transform: translateY(-1px); }
   .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-  .chip.active { background: var(--surface-2); border-color: var(--ink-2); color: var(--ink); font-weight: 600; }
+  .chip.active { background: var(--surface-2); border-color: var(--c1); color: var(--ink);
+                 font-weight: 700; box-shadow: 0 0 0 1px rgba(57,135,229,0.4); }
+  .chip .wow { font-size: 11px; font-weight: 700; }
+  /* 我的關注 */
+  #pinnedBar { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-bottom: 16px; }
+  .pin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+              padding: 10px 14px; cursor: pointer; min-width: 150px;
+              transition: transform .12s, border-color .12s; position: relative; }
+  .pin-card:hover { transform: translateY(-2px); border-color: rgba(57,135,229,0.5); }
+  .pin-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .pin-line { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .pin-x { position: absolute; top: 4px; right: 8px; color: var(--muted); font-size: 12px; }
+  .pin-x:hover { color: #ff8585; }
+  .pin-alert { color: #ff8585; font-weight: 700; }
   .card { background: var(--surface); border: 1px solid var(--border);
-          border-left: 4px solid var(--grid); border-radius: 10px;
-          padding: 13px 16px; margin-bottom: 9px; }
+          border-left: 4px solid var(--grid); border-radius: 12px;
+          padding: 13px 16px; margin-bottom: 9px;
+          transition: transform .1s, border-color .12s; }
+  .card:hover { transform: translateX(2px); border-color: rgba(57,135,229,0.35); }
   .card h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
   .card h3 a { color: var(--ink); text-decoration: none; }
   .card h3 a:hover { color: var(--c1); }
@@ -119,6 +164,7 @@
 </head>
 <body>
 <header>
+  <span class="brand-mark"></span>
   <h1>台灣產業趨勢監測與公司情報系統</h1>
   <span id="updated"></span>
   <span class="spacer"></span>
@@ -142,12 +188,15 @@
   <button class="btn primary" onclick="searchCompany()">公司搜尋</button>
   <button class="btn" onclick="browseIndustries()">產業瀏覽</button>
   <button class="btn" onclick="showReports()">下載週報</button>
+  <button class="btn" onclick="exportCSV()">匯出 CSV</button>
 </div>
 
 <main>
   <div id="status"></div>
   <div id="dashboard">
     <div id="alertBar" class="hidden"></div>
+    <div class="kpi-row" id="kpiRow"></div>
+    <div id="pinnedBar" class="hidden"></div>
     <div class="viz-grid">
       <div class="panel" id="industryPanel">
         <h2>產業聲量樹狀圖</h2>
@@ -290,17 +339,43 @@ function filterArticles(startS, endS, industry, keyword) {
      (x.source || "").includes(keyword)));
 }
 
+function prevPeriodRange(s, e) {
+  const start = new Date(s), end = new Date(e);
+  const span = Math.max(1, Math.round((end - start) / 86400000));
+  return [fmt(new Date(start.getTime() - span * 86400000)),
+          fmt(new Date(start.getTime() - 86400000))];
+}
+
+function wowHTML(cur, prev) {
+  if (!prev) return "";
+  const pct = (cur - prev) / prev * 100;
+  if (Math.abs(pct) < 1) return "";
+  const up = pct > 0;
+  return ` <span class="wow" style="color:${up ? "#ff8585" : "#7ee2b8"}">
+    ${up ? "▲" : "▼"}${Math.abs(pct).toFixed(0)}%</span>`;
+}
+
 function loadOverview() {
   $("dashboard").style.display = "";
   const [s, e] = resolvePeriod();
   const arts = filterArticles(s, e, currentIndustry, "");
+  const allInPeriod = filterArticles(s, e, "", "");
   const counts = {};
-  for (const a of filterArticles(s, e, "", "")) {
+  for (const a of allInPeriod) {
     if (a.industry) counts[a.industry] = (counts[a.industry] || 0) + 1;
+  }
+  // 等長前一期(週對週變化)
+  const [ps, pe] = prevPeriodRange(s, e);
+  const prevAll = filterArticles(ps, pe, "", "");
+  const prevCounts = {};
+  for (const a of prevAll) {
+    if (a.industry) prevCounts[a.industry] = (prevCounts[a.industry] || 0) + 1;
   }
   $("status").textContent = `期間 ${s} ~ ${e},共 ${arts.length} 筆` +
     (currentIndustry ? `(篩選:${currentIndustry})` : "");
-  renderChips(counts);
+  renderKPIs(allInPeriod, prevAll, counts);
+  renderPinned(s, e);
+  renderChips(counts, prevCounts, prevAll.length, allInPeriod.length);
   // 已篩選單一產業時,產業占比圖無意義 → 隱藏,文字雲改為全寬
   if (currentIndustry) {
     $("industryPanel").style.display = "none";
@@ -318,16 +393,96 @@ function loadOverview() {
 }
 function pick(i) { currentIndustry = i; loadOverview(); }
 
-function renderChips(counts) {
+function renderChips(counts, prevCounts, prevTotal, curTotal) {
+  prevCounts = prevCounts || {};
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const prevClassified = Object.values(prevCounts).reduce((a, b) => a + b, 0);
   const chips = [
     `<span class="chip ${currentIndustry === "" ? "active" : ""}" onclick="pick('')">
-       <span class="dot" style="background:var(--ink-2)"></span>全部 (${total})</span>`,
+       <span class="dot" style="background:var(--ink-2)"></span>全部 (${total})${wowHTML(total, prevClassified)}</span>`,
   ].concat(INDUSTRIES.map(i =>
     `<span class="chip ${currentIndustry === i ? "active" : ""}" onclick="pick('${i}')">
        <span class="dot" style="background:${INDUSTRY_COLORS[i] || "var(--muted)"}"></span>
-       ${i} (${counts[i] || 0})</span>`));
+       ${i} (${counts[i] || 0})${wowHTML(counts[i] || 0, prevCounts[i] || 0)}</span>`));
   $("chips").innerHTML = chips.join("");
+}
+
+/* ---------- KPI 統計列 ---------- */
+function renderKPIs(allInPeriod, prevAll, counts) {
+  const classified = allInPeriod.filter(a => a.industry).length;
+  const industriesCovered = Object.keys(counts).length;
+  const alertCompanies = (META.alerts || []).length;
+  const kpis = [
+    { label: "本期報導數", value: allInPeriod.length,
+      sub: prevAll.length ? `前期 ${prevAll.length}` : "", wow: wowHTML(allInPeriod.length, prevAll.length) },
+    { label: "可歸類報導", value: classified,
+      sub: allInPeriod.length ? `佔 ${(classified / allInPeriod.length * 100).toFixed(0)}%` : "" },
+    { label: "涵蓋產業", value: industriesCovered, sub: "共 11 類" },
+    { label: "負面警示(近7天)", value: alertCompanies, sub: alertCompanies ? "家公司,見上方警示列" : "無" },
+  ];
+  $("kpiRow").innerHTML = kpis.map(k =>
+    `<div class="kpi"><div class="k-label">${k.label}</div>
+       <div class="k-value">${k.value}${k.wow || ""}</div>
+       <div class="k-sub">${k.sub || ""}</div></div>`).join("");
+}
+
+/* ---------- 我的關注(localStorage) ---------- */
+function getPins() {
+  try { return JSON.parse(localStorage.getItem("pinned_companies") || "[]"); }
+  catch (e) { return []; }
+}
+function savePins(pins) { localStorage.setItem("pinned_companies", JSON.stringify(pins)); }
+function togglePin(name, fromSearch) {
+  let pins = getPins();
+  if (pins.includes(name)) pins = pins.filter(p => p !== name);
+  else pins.push(name);
+  savePins(pins);
+  if (fromSearch) searchCompany();
+  else loadOverview();
+}
+function renderPinned(s, e) {
+  const bar = $("pinnedBar");
+  const pins = getPins();
+  if (!pins.length) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  const endFull = e + "T23:59:59";
+  bar.innerHTML = pins.map(name => {
+    const canonical = findCanonicalCompany(name) || name;
+    const aliases = findWatchAliases(canonical) || [name];
+    const match = aliasMatcher(aliases);
+    const cnt = ALL.filter(x => x.published_at >= s && x.published_at <= endFull &&
+      match(x.title + " " + (x.summary || "") + " " + (x.source || ""))).length;
+    const q = (META.quotes || {})[canonical];
+    const hasAlert = (META.alerts || []).some(al => al.company === canonical);
+    const qline = q
+      ? `<span style="color:${q.pct > 0 ? "#ff8585" : (q.pct < 0 ? "#7ee2b8" : "var(--muted)")}">
+           ${q.close} ${q.pct > 0 ? "▲" : (q.pct < 0 ? "▼" : "")}${Math.abs(q.pct).toFixed(2)}%</span>`
+      : "";
+    return `<div class="pin-card" onclick="$('company').value='${name}';searchCompany()">
+      <span class="pin-x" onclick="event.stopPropagation();togglePin('${name}')">✕</span>
+      <div class="pin-name">⭐ ${name}${hasAlert ? ' <span class="pin-alert">⚠</span>' : ""}</div>
+      <div class="pin-line">聲量 ${cnt} 篇 ${qline}</div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- CSV 匯出(目前期間+產業篩選) ---------- */
+function exportCSV() {
+  const [s, e] = resolvePeriod();
+  const arts = filterArticles(s, e, currentIndustry, "");
+  if (!arts.length) { alert("目前範圍內無資料可匯出"); return; }
+  const esc = v => '"' + String(v || "").replace(/"/g, '""') + '"';
+  const rows = [["發布時間", "產業", "來源", "標題", "連結"].join(",")];
+  for (const a of arts) {
+    rows.push([esc(a.published_at), esc(a.industry || "未歸類"), esc(a.source),
+               esc(a.title), esc(a.url)].join(","));
+  }
+  const blob = new Blob(["﻿" + rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `產業監測_${s}_${e}${currentIndustry ? "_" + currentIndustry : ""}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 /* ---------- 樹狀圖 ---------- */
@@ -797,7 +952,11 @@ function searchCompany() {
   } else {
     news = filterArticles(s, e, "", name);
   }
-  let html = `<h2 class="section">公司情報:${name}(期間 ${s} ~ ${e})</h2>`;
+  const pinName = canonicalName || name;
+  const pinned = getPins().includes(pinName);
+  let html = `<h2 class="section">公司情報:${name}(期間 ${s} ~ ${e})
+    <button class="btn" style="margin-left:10px;font-size:12px;padding:4px 14px"
+      onclick="togglePin('${pinName}', true)">${pinned ? "★ 移除關注" : "☆ 加入關注"}</button></h2>`;
   html += `<div class="note">商工登記資料(統編、登記地址、資本額、變更紀錄)請至
     <a href="${FINDBIZ_URL}" target="_blank" rel="noopener" style="color:#fab219">
     經濟部商工登記公示資料查詢服務</a> 查詢(該站含驗證碼,無法自動查詢)。</div>`;
@@ -818,7 +977,8 @@ function showReports() {
     html += `<div class="note">尚無已產出之週報。</div>`;
   } else {
     html += `<div class="card report-list">` + reports.map(f =>
-      `<p>📄 <a href="reports/${encodeURIComponent(f)}" download>${f}</a></p>`).join("") + `</div>`;
+      `<p>${f.endsWith(".pptx") ? "📊" : "📄"} <a href="reports/${encodeURIComponent(f)}" download>${f}</a>
+         <span style="color:var(--muted);font-size:12px">${f.endsWith(".pptx") ? "(PowerPoint 簡報)" : "(Word 報告)"}</span></p>`).join("") + `</div>`;
   }
   const gaps = (META.fetch_status || []).filter(x => x.status !== "ok");
   if (gaps.length) {

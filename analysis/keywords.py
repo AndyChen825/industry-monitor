@@ -29,6 +29,24 @@ STOPWORDS = set("""
 頻道 公布 提供 舉行 出席 召開 發布 發表 宣布 針對 收盤 開盤 上漲 下跌 財經
 """.split())
 
+# 英文停用詞(國際媒體來源;比對時一律轉小寫)
+STOPWORDS_EN = set("""
+the and for with that this from will has have are was were you your its had can
+could would should more than how why what when where all also but not out about
+after before over under just been being new now says said one two three first
+best get got make made take use used using into onto off our their there here
+some most much many other others which while during between against them they
+his her she him who whom whose these those still only even much very like most
+""".split())
+
+
+def _is_stopword(w):
+    if w in STOPWORDS:
+        return True
+    if w.isascii() and w.lower() in STOPWORDS_EN:
+        return True
+    return False
+
 
 def article_words(article):
     """單篇文章斷詞(去重、濾停用詞),供大量子集合統計時預先計算。"""
@@ -36,7 +54,7 @@ def article_words(article):
     words = set()
     for w in jieba.cut(text):
         w = w.strip()
-        if len(w) < 2 or w in STOPWORDS:
+        if len(w) < 2 or _is_stopword(w):
             continue
         if not any("一" <= ch <= "鿿" or ch.isalpha() for ch in w):
             continue
@@ -97,7 +115,7 @@ def top_keywords(articles, limit=40):
         seen_in_doc = set()
         for w in jieba.cut(text):
             w = w.strip()
-            if len(w) < 2 or w in STOPWORDS:
+            if len(w) < 2 or _is_stopword(w):
                 continue
             if not any("一" <= ch <= "鿿" or ch.isalpha() for ch in w):
                 continue

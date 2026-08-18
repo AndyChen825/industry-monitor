@@ -133,16 +133,28 @@ def build():
                      title="台灣產業趨勢監測週報", out_path=REPORTS_DIR / report_name,
                      watchlist=watchlist, articles_prev=prev_arts)
         print(f"週報已產出:{report_name}")
+        try:
+            from report.ppt_report import build_ppt
+            ppt_name = f"台灣產業趨勢監測週報_{start_s}_{end_s}.pptx"
+            build_ppt(week_arts, start_s, end_s, watchlist=watchlist,
+                      out_path=str(REPORTS_DIR / ppt_name), articles_prev=prev_arts)
+            print(f"簡報已產出:{ppt_name}")
+        except Exception as e:  # noqa: BLE001 — PPT 失敗不影響 Word 週報
+            print(f"簡報產出失敗(不影響 Word 週報):{e}")
     else:
         print("非週一,僅更新資料,不產出新週報")
     conn.close()
 
-    # 只保留最近 N 份報告
-    all_reports = sorted(REPORTS_DIR.glob("*.docx"),
-                         key=lambda p: p.stat().st_mtime, reverse=True)
-    for old in all_reports[KEEP_REPORTS:]:
-        old.unlink()
-    report_files = [p.name for p in all_reports[:KEEP_REPORTS]]
+    # 每種格式各保留最近 N 份報告
+    kept = []
+    for pattern in ("*.docx", "*.pptx"):
+        files = sorted(REPORTS_DIR.glob(pattern),
+                       key=lambda p: p.stat().st_mtime, reverse=True)
+        for old in files[KEEP_REPORTS:]:
+            old.unlink()
+        kept.extend(files[:KEEP_REPORTS])
+    report_files = [p.name for p in
+                    sorted(kept, key=lambda p: p.stat().st_mtime, reverse=True)]
 
     # meta:產出時間、來源狀態、報告清單
     meta = {

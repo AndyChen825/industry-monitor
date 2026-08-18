@@ -30,6 +30,9 @@ jobs:
       - name: 安裝相依套件
         run: pip install -r requirements.txt
 
+      - name: 安裝中文字型(報告圖表用)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+
       - name: 抓取各來源新資料(增量更新)
         run: python main.py fetch
 
