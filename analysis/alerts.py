@@ -24,20 +24,23 @@ def _company_matchers():
     return matchers
 
 
-def negative_alerts(articles, max_samples=5):
-    """回傳 [{"company", "count", "keywords", "samples"}],依命中篇數排序。"""
+def signal_scan(articles, keywords, max_samples=5):
+    """通用訊號掃描:觀察名單公司 × 指定關鍵詞同時命中。
+
+    回傳 [{"company", "count", "keywords", "samples"}],依命中篇數排序。
+    """
     matchers = _company_matchers()
-    alerts = {}
+    hits_by_company = {}
     for a in articles:
         text = f"{a.get('title', '')} {a.get('summary', '')}"
-        hit_kws = [k for k in NEGATIVE_KEYWORDS if k in text]
+        hit_kws = [k for k in keywords if k in text]
         if not hit_kws:
             continue
         full = text + " " + (a.get("source") or "")
         for name, match in matchers:
             if not match(full):
                 continue
-            item = alerts.setdefault(name, {
+            item = hits_by_company.setdefault(name, {
                 "company": name, "count": 0, "keywords": set(), "samples": [],
             })
             item["count"] += 1
@@ -50,8 +53,19 @@ def negative_alerts(articles, max_samples=5):
                     "published_at": (a.get("published_at") or "")[:10],
                 })
     out = []
-    for v in alerts.values():
+    for v in hits_by_company.values():
         v["keywords"] = sorted(v["keywords"])[:6]
         out.append(v)
     out.sort(key=lambda x: -x["count"])
     return out
+
+
+def negative_alerts(articles, max_samples=5):
+    """負面聲量警示。"""
+    return signal_scan(articles, NEGATIVE_KEYWORDS, max_samples)
+
+
+def positive_signals(articles, max_samples=5):
+    """商機(正面)訊號:得標/擴廠/展店/導入AI 等,供業務拜訪線索。"""
+    from config import POSITIVE_KEYWORDS
+    return signal_scan(articles, POSITIVE_KEYWORDS, max_samples)

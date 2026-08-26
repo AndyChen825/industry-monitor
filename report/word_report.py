@@ -229,7 +229,7 @@ def build_report(articles, start_date, end_date, fetch_status=None,
         "文章實際立場需人工確認(例:報導同業出事亦可能命中)。")
     warn.runs[0].font.size = Pt(9)
     warn.runs[0].font.color.rgb = GRAY
-    from analysis.alerts import negative_alerts
+    from analysis.alerts import negative_alerts, positive_signals
     alerts = negative_alerts(articles)
     if not alerts:
         doc.add_paragraph("本期未偵測到觀察名單公司之負面訊號。")
@@ -239,6 +239,28 @@ def build_report(articles, start_date, end_date, fetch_status=None,
             p.add_run(f"⚠ {al['company']}(疑似負面 {al['count']} 篇;"
                       f"命中詞:{'、'.join(al['keywords'])})").bold = True
             for s in al["samples"][:3]:
+                sp = doc.add_paragraph(style="List Bullet")
+                sp.add_run(s["title"])
+                c = sp.add_run(f" ({s['source']},{s['published_at'] or '日期不明'},{s['url']})")
+                c.font.size = Pt(9)
+                c.font.color.rgb = GRAY
+
+    # ---- 商機訊號(業務拜訪線索) ----
+    _heading(doc, f"{next(section_no)}、商機訊號(業務拜訪線索)", 1)
+    warn2 = doc.add_paragraph(
+        "規則式偵測:觀察名單公司 × 正面事件詞(得標/擴廠/展店/導入AI 等)同時命中,"
+        "代表該公司可能有預算與需求;僅供初步線索,請人工確認。")
+    warn2.runs[0].font.size = Pt(9)
+    warn2.runs[0].font.color.rgb = GRAY
+    opps = positive_signals(articles)
+    if not opps:
+        doc.add_paragraph("本期未偵測到觀察名單公司之商機訊號。")
+    else:
+        for op in opps[:12]:
+            p = doc.add_paragraph()
+            p.add_run(f"💡 {op['company']}(商機訊號 {op['count']} 篇;"
+                      f"命中詞:{'、'.join(op['keywords'])})").bold = True
+            for s in op["samples"][:2]:
                 sp = doc.add_paragraph(style="List Bullet")
                 sp.add_run(s["title"])
                 c = sp.add_run(f" ({s['source']},{s['published_at'] or '日期不明'},{s['url']})")

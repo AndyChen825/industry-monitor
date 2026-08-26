@@ -193,12 +193,22 @@ def build():
     # 上市櫃最近收盤價與漲跌幅(附行情所屬日期)
     meta["quotes"], meta["quotes_date"] = build_stock_quotes_by_abbr()
 
-    # 負面聲量警示(近 7 天,規則式初步偵測)
-    from analysis.alerts import negative_alerts
+    # 負面聲量警示 + 商機訊號(近 7 天,規則式初步偵測)
+    from analysis.alerts import negative_alerts, positive_signals
     alert_cut = (now - timedelta(days=7)).strftime("%Y-%m-%d")
     recent = [a for a in articles if (a.get("published_at") or "") >= alert_cut]
     meta["alerts"] = negative_alerts(recent)
+    meta["opportunities"] = positive_signals(recent)
     meta["assoc"] = assoc   # 品牌關聯字(近 90 天)
+
+    # 產品線監測組 + 標案雷達
+    from config import PRODUCT_LINES, TENDER_KEYWORDS, LAUNCH_KEYWORDS
+    meta["product_lines"] = PRODUCT_LINES
+    meta["launch_keywords"] = LAUNCH_KEYWORDS
+    from fetchers.tenders import fetch_tenders, MANUAL_URL
+    tender_records, tender_note = fetch_tenders(TENDER_KEYWORDS)
+    meta["tenders"] = {"records": tender_records, "note": tender_note,
+                       "keywords": TENDER_KEYWORDS, "manual_url": MANUAL_URL}
     (DATA_DIR / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8")
 

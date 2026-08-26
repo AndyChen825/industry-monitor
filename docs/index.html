@@ -106,6 +106,47 @@
                 background: rgba(225,64,64,0.16); border: 1px solid rgba(225,64,64,0.5); }
   .alert-chip:hover { background: rgba(225,64,64,0.3); }
   .alert-note { font-size: 11px; color: var(--muted); width: 100%; }
+  /* 商機訊號列(綠色系) */
+  #oppBar { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.4);
+            border-radius: 10px; padding: 10px 16px; margin-bottom: 14px;
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .opp-title { color: #34d399; font-weight: 700; font-size: 14px; margin-right: 4px; }
+  .opp-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 11px;
+              border-radius: 14px; font-size: 12px; cursor: pointer; color: var(--ink);
+              background: rgba(16,185,129,0.14); border: 1px solid rgba(16,185,129,0.45); }
+  .opp-chip:hover { background: rgba(16,185,129,0.28); }
+  /* 雷達清單列 */
+  .radar-row { display: flex; gap: 10px; padding: 7px 4px; border-bottom: 1px solid var(--grid);
+               font-size: 13px; align-items: baseline; }
+  .radar-row:last-child { border-bottom: none; }
+  .radar-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .radar-tag { font-size: 11px; color: var(--c3); border: 1px solid var(--c3);
+               border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .radar-row a { color: var(--ink); text-decoration: none; }
+  .radar-row a:hover { color: var(--c1); }
+  /* 行動版 */
+  @media (max-width: 640px) {
+    header, .bar, main { padding-left: 14px; padding-right: 14px; }
+    header h1 { font-size: 15px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+    #treemap, #companyTreemap { height: 230px !important; }
+    #wordcloud { min-height: 220px; }
+    .bar input[type="text"] { width: 100%; }
+    .tm-name { font-size: 11px; }
+  }
+  /* 列印(拜訪情報卡):白底黑字、隱藏操作元件 */
+  @media print {
+    body { background: #fff !important; color: #111 !important; }
+    header, .bar, #dashboard, #tooltip, .no-print { display: none !important; }
+    main { padding: 0; max-width: 100%; }
+    #content .card { background: #fff; border: 1px solid #999; border-left-width: 4px;
+                     break-inside: avoid; }
+    #content .card h3 a, #content, h2.section, h3.section { color: #111 !important; }
+    .meta, .summary { color: #444 !important; }
+    .note { background: #fff; border-color: #999; color: #333; }
+    .chips .chip { background: #fff; border-color: #999; color: #111; }
+    table.reg td { border-color: #999; color: #111; }
+  }
   .tm-name { font-size: 12px; font-weight: 600; display: block;
              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tm-count { font-size: 11px; opacity: .82; }
@@ -195,6 +236,7 @@
   <div id="status"></div>
   <div id="dashboard">
     <div id="alertBar" class="hidden"></div>
+    <div id="oppBar" class="hidden"></div>
     <div class="kpi-row" id="kpiRow"></div>
     <div id="pinnedBar" class="hidden"></div>
     <div class="viz-grid">
@@ -220,11 +262,30 @@
       <div style="display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap;align-items:center">
         <input type="text" id="cmpInput" size="42"
                placeholder="以逗號分隔公司名(最多 4 家),留空 = 自動取本產業前 3 大">
-        <button class="btn primary" onclick="renderCompare()">更新對比</button>
+        <button class="btn primary" onclick="saveCmpPrefs(); renderCompare()">更新對比</button>
+        <select id="cmpScope" onchange="saveCmpPrefs(); renderCompare()">
+          <option value="all">全部媒體</option>
+          <option value="tw">台灣媒體</option>
+          <option value="intl">國際媒體</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted);align-self:center">快速對比:</span>
+        <button class="btn" style="padding:4px 10px;font-size:12px" onclick="cmpPreset('top3')">本產業前3</button>
+        <button class="btn" style="padding:4px 10px;font-size:12px" onclick="cmpPreset('pc')">電腦品牌</button>
+        <button class="btn" style="padding:4px 10px;font-size:12px" onclick="cmpPreset('lines')">產品線(電競)</button>
       </div>
       <div id="cmpLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0;font-size:13px"></div>
       <div id="sovBar" style="margin:8px 0 12px"></div>
       <div id="trendChart" style="width:100%"></div>
+    </div>
+    <div class="panel" id="launchPanel" style="margin-bottom:18px">
+      <h2>新品發布雷達</h2>
+      <div id="launchList"></div>
+    </div>
+    <div class="panel" id="tenderPanel" style="margin-bottom:18px">
+      <h2>標案商機雷達</h2>
+      <div id="tenderList"></div>
     </div>
     <div class="chips" id="chips"></div>
   </div>
@@ -277,6 +338,7 @@ function resolvePeriod() {
 }
 function onPeriodChange() {
   $("customRange").classList.toggle("hidden", $("period").value !== "custom");
+  savePrefs();
   if ($("period").value !== "custom") loadOverview();
 }
 function browseIndustries() {
@@ -324,7 +386,10 @@ async function initData() {
     ]);
     ALL = a; KEYWORDS = k; META = m;
     $("updated").textContent = "資料更新:" + (m.generated_at || "").slice(0, 16).replace("T", " ");
+    restorePrefs();
     renderAlerts();
+    renderOpps();
+    renderTenders();
     loadOverview();
   } catch (e) {
     $("status").innerHTML =
@@ -422,10 +487,11 @@ async function loadOverview() {
   renderCompanyTreemap(filterArticles(s, e, "", ""));
   renderWordcloud();
   renderCompare();
+  renderLaunches();
   $("content").innerHTML = arts.slice(0, 300).map(cardHTML).join("") ||
     "<p>此期間尚無資料。</p>";
 }
-function pick(i) { currentIndustry = i; loadOverview(); }
+function pick(i) { currentIndustry = i; savePrefs(); loadOverview(); }
 
 function renderChips(counts, prevCounts, prevTotal, curTotal) {
   prevCounts = prevCounts || {};
@@ -778,6 +844,123 @@ function showAlertDetail(i) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ---------- 商機訊號列(近 7 天,正面事件偵測) ---------- */
+function renderOpps() {
+  const bar = $("oppBar");
+  const opps = META.opportunities || [];
+  if (!opps.length) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  bar.innerHTML = `<span class="opp-title">💡 商機訊號(近 7 天)</span>` +
+    opps.slice(0, 10).map((op, i) =>
+      `<span class="opp-chip" onclick="showOppDetail(${i})"
+        title="命中詞:${op.keywords.join("、")}">${op.company} ${op.count} 篇</span>`).join("") +
+    `<span class="alert-note">得標/擴廠/展店/導入AI 等正面事件 — 該公司可能有預算與需求,點入查看報導(規則式初步線索)</span>`;
+}
+
+function showOppDetail(i) {
+  const op = (META.opportunities || [])[i];
+  if (!op) return;
+  $("dashboard").style.display = "none";
+  let html = `<h2 class="section">💡 ${op.company} — 商機訊號 ${op.count} 篇(近 7 天)</h2>`;
+  html += `<div class="note" style="color:#34d399;background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.4)">
+    命中關鍵詞:${op.keywords.join("、")}。正面事件代表可能有預算與需求;請人工確認後排入拜訪計畫。</div>`;
+  html += op.samples.map(s => `<div class="card" style="border-left-color:#10b981">
+    <h3><a href="${s.url}" target="_blank" rel="noopener">${s.title}</a></h3>
+    <div class="meta">${s.source} | ${s.published_at || "日期不明"}</div></div>`).join("");
+  html += `<p style="font-size:13px;color:var(--muted)">完整報導可用公司搜尋「${op.company}」檢視;點右上「⌂ 回到首頁」返回。</p>`;
+  $("status").textContent = "";
+  $("content").innerHTML = html;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- 新品發布雷達(國際/科技媒體 × 發布詞 × 品牌) ---------- */
+function renderLaunches() {
+  const el = $("launchList");
+  const kws = META.launch_keywords || [];
+  const brands = [];
+  for (const [name, aliases] of Object.entries((META.watchlist || {})["高科技製造業"] || {}))
+    brands.push([name, aliasMatcher(aliases)]);
+  for (const [name, aliases] of Object.entries(META.product_lines || {}))
+    brands.push([name, aliasMatcher(aliases)]);
+  const kwMatch = aliasMatcher(kws);
+  const rows = [];
+  for (const a of ALL) {
+    const text = a.title + " " + (a.summary || "");
+    if (!kwMatch(text)) continue;
+    const hit = brands.find(([, m]) => m(text));
+    if (!hit) continue;
+    rows.push({ a, brand: hit[0] });
+    if (rows.length >= 60) break;
+  }
+  rows.sort((x, y) => (y.a.published_at || "").localeCompare(x.a.published_at || ""));
+  el.innerHTML = rows.slice(0, 12).map(({ a, brand }) =>
+    `<div class="radar-row">
+       <span class="radar-date">${(a.published_at || "").slice(5, 10) || "—"}</span>
+       <span class="radar-tag">${brand}</span>
+       <a href="${a.url}" target="_blank" rel="noopener">${a.title}</a>
+     </div>`).join("") ||
+    "<p style='color:var(--muted);font-size:13px'>近 7 天未偵測到觀察品牌之新品發布訊號。</p>";
+}
+
+/* ---------- 標案商機雷達 ---------- */
+function renderTenders() {
+  const el = $("tenderList");
+  const t = META.tenders || {};
+  const recs = t.records || [];
+  let html = "";
+  if (recs.length) {
+    html += recs.slice(0, 15).map(r =>
+      `<div class="radar-row">
+         <span class="radar-date">${r.date}</span>
+         <span class="radar-tag">${r.keyword}</span>
+         <a href="${r.url}" target="_blank" rel="noopener">${r.unit} — ${r.title}</a>
+       </div>`).join("");
+  }
+  if (t.note) {
+    html += `<div class="note">${t.note}` +
+      (t.manual_url && !recs.length
+        ? ` <a href="${t.manual_url}" target="_blank" rel="noopener" style="color:#fab219">前往政府電子採購網</a>
+           (建議關鍵字:${(t.keywords || []).join("、")})`
+        : "") + `</div>`;
+  }
+  el.innerHTML = html || "<p style='color:var(--muted);font-size:13px'>目前無標案資料。</p>";
+}
+
+/* ---------- 競品對比:快速預設組 ---------- */
+function cmpPreset(kind) {
+  if (kind === "top3") $("cmpInput").value = "";
+  else if (kind === "pc") $("cmpInput").value = "華碩,宏碁,微星,聯想";
+  else if (kind === "lines") $("cmpInput").value = "華碩 ROG,宏碁 Predator,聯想 Legion,戴爾 Alienware";
+  saveCmpPrefs();
+  renderCompare();
+}
+
+/* ---------- 使用者偏好記憶(存於各自瀏覽器) ---------- */
+function savePrefs() {
+  try {
+    localStorage.setItem("im_prefs", JSON.stringify({
+      period: $("period").value, industry: currentIndustry,
+    }));
+  } catch (e) { /* 無痕模式等情況忽略 */ }
+}
+function saveCmpPrefs() {
+  try {
+    localStorage.setItem("im_cmp", JSON.stringify({
+      input: $("cmpInput").value, scope: $("cmpScope").value,
+    }));
+  } catch (e) { }
+}
+function restorePrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem("im_prefs") || "{}");
+    if (p.period && p.period !== "custom") $("period").value = p.period;
+    if (p.industry) currentIndustry = p.industry;
+    const c = JSON.parse(localStorage.getItem("im_cmp") || "{}");
+    if (c.input) $("cmpInput").value = c.input;
+    if (c.scope) $("cmpScope").value = c.scope;
+  } catch (e) { }
+}
+
 /* ---------- 竄升關鍵字(本期 vs 等長前期成長最快) ---------- */
 function renderRising(rising) {
   const wrap = $("risingWrap");
@@ -800,10 +983,11 @@ function defaultCompareNames() {
   return (window._lastCompanyRank || []).slice(0, 3);
 }
 
-function renderCompare() {
+async function renderCompare() {
+  if (!(await needFullForPeriod())) return;
   const input = $("cmpInput").value.trim();
   let names = input
-    ? input.split(/[,,、;;\s]+/).filter(Boolean).slice(0, 4)
+    ? input.split(/[,,、;;]+/).map(s => s.trim()).filter(Boolean).slice(0, 4)
     : defaultCompareNames();
   const legendEl = $("cmpLegend"), sovEl = $("sovBar"), chartEl = $("trendChart");
   if (!names.length) {
@@ -820,13 +1004,19 @@ function renderCompare() {
     legendEl.innerHTML = ""; sovEl.innerHTML = "";
     return;
   }
-  // 各公司每日提及數
+  // 媒體範圍過濾(全部/台灣/國際)
+  const INTL_SOURCES = new Set(["The Verge", "Tom's Hardware", "Engadget"]);
+  const scope = ($("cmpScope") || { value: "all" }).value;
+  const inScope = a => scope === "all"
+    || (scope === "intl") === INTL_SOURCES.has(a.source);
+  // 各公司/產品線每日提及數
   const series = names.map((name, i) => {
     const aliases = findWatchAliases(name) || [name];
     const match = aliasMatcher(aliases);
     const daily = Object.fromEntries(days.map(d => [d, 0]));
     let total = 0;
     for (const a of ALL) {
+      if (!inScope(a)) continue;
       const d = (a.published_at || "").slice(0, 10);
       if (!(d in daily)) continue;
       if (match(a.title + " " + (a.summary || "") + " " + (a.source || ""))) {
@@ -956,6 +1146,7 @@ function findWatchAliases(name) {
   for (const companies of Object.values(META.watchlist || {})) {
     if (companies[name]) return companies[name];
   }
+  if ((META.product_lines || {})[name]) return META.product_lines[name];
   return null;
 }
 
@@ -991,8 +1182,10 @@ async function searchCompany() {
   const pinName = canonicalName || name;
   const pinned = getPins().includes(pinName);
   let html = `<h2 class="section">公司情報:${name}(期間 ${s} ~ ${e})
-    <button class="btn" style="margin-left:10px;font-size:12px;padding:4px 14px"
-      onclick="togglePin('${pinName}', true)">${pinned ? "★ 移除關注" : "☆ 加入關注"}</button></h2>`;
+    <button class="btn no-print" style="margin-left:10px;font-size:12px;padding:4px 14px"
+      onclick="togglePin('${pinName}', true)">${pinned ? "★ 移除關注" : "☆ 加入關注"}</button>
+    <button class="btn no-print" style="margin-left:6px;font-size:12px;padding:4px 14px"
+      onclick="window.print()">🖨 列印情報卡</button></h2>`;
   html += `<div class="note">商工登記資料(統編、登記地址、資本額、變更紀錄)請至
     <a href="${FINDBIZ_URL}" target="_blank" rel="noopener" style="color:#fab219">
     經濟部商工登記公示資料查詢服務</a> 查詢(該站含驗證碼,無法自動查詢)。</div>`;
