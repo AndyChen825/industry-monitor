@@ -202,9 +202,10 @@ def build():
     meta["assoc"] = assoc   # 品牌關聯字(近 90 天)
 
     # 產品線監測組 + 標案雷達
-    from config import PRODUCT_LINES, TENDER_KEYWORDS, LAUNCH_KEYWORDS
+    from config import PRODUCT_LINES, TENDER_KEYWORDS, LAUNCH_KEYWORDS, LAPTOP_BRANDS
     meta["product_lines"] = PRODUCT_LINES
     meta["launch_keywords"] = LAUNCH_KEYWORDS
+    meta["laptop_brands"] = LAPTOP_BRANDS
     from fetchers.tenders import fetch_tenders, MANUAL_URL
     tender_records, tender_note = fetch_tenders(TENDER_KEYWORDS)
     meta["tenders"] = {"records": tender_records, "note": tender_note,

@@ -146,6 +146,7 @@ SOURCE_MODULES = [
     ("theverge",       "The Verge",     "國際科技"),
     ("tomshardware",   "Tom's Hardware", "國際科技"),
     ("engadget",       "Engadget",      "國際科技"),
+    ("ptt",            "PTT",           "論壇"),
 ]
 
 # 商工登記(公司情報)另由 fetchers/findbiz.py 提供,不在新聞來源清單內。
@@ -183,6 +184,9 @@ PRODUCT_LINES = {
     "微星 Raider": ["Raider"],
 }
 
+# 論壇筆電品牌聲量監測(名稱需存在於觀察清單/產品線,別名自動沿用)
+LAPTOP_BRANDS = ["華碩", "宏碁", "技嘉", "微星", "聯想", "HP", "戴爾", "Razer"]
+
 # 標案雷達監測關鍵字(政府電子採購網)
 TENDER_KEYWORDS = ["筆記型電腦", "桌上型電腦", "伺服器", "平板電腦", "顯示器", "電競"]
 
@@ -211,6 +215,7 @@ COMPANY_WATCHLIST = {
         "聯想": ["聯想", "Lenovo"],
         "戴爾": ["戴爾", "Dell"],
         "蘋果": ["蘋果", "Apple"],
+        "Razer": ["Razer", "雷蛇"],
         # 半導體
         "台積電": ["台積電", "TSMC"],
         "聯發科": ["聯發科", "MediaTek"],

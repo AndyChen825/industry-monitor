@@ -267,6 +267,7 @@
           <option value="all">全部媒體</option>
           <option value="tw">台灣媒體</option>
           <option value="intl">國際媒體</option>
+          <option value="forum">論壇(PTT)</option>
         </select>
       </div>
       <div style="display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap">
@@ -278,6 +279,10 @@
       <div id="cmpLegend" style="display:flex;gap:16px;flex-wrap:wrap;margin:6px 0;font-size:13px"></div>
       <div id="sovBar" style="margin:8px 0 12px"></div>
       <div id="trendChart" style="width:100%"></div>
+    </div>
+    <div class="panel" id="forumPanel" style="margin-bottom:18px">
+      <h2>論壇筆電品牌聲量(PTT)</h2>
+      <div id="forumBrandBars" style="margin-top:10px"></div>
     </div>
     <div class="panel" id="launchPanel" style="margin-bottom:18px">
       <h2>新品發布雷達</h2>
@@ -487,6 +492,7 @@ async function loadOverview() {
   renderCompanyTreemap(filterArticles(s, e, "", ""));
   renderWordcloud();
   renderCompare();
+  renderForumBrands();
   renderLaunches();
   $("content").innerHTML = arts.slice(0, 300).map(cardHTML).join("") ||
     "<p>此期間尚無資料。</p>";
@@ -873,6 +879,61 @@ function showOppDetail(i) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ---------- 來源類型判斷 ---------- */
+const INTL_SOURCE_SET = new Set(["The Verge", "Tom's Hardware", "Engadget"]);
+const isIntlSource = s => INTL_SOURCE_SET.has(s);
+const isForumSource = s => (s || "").startsWith("PTT");
+
+/* ---------- 論壇筆電品牌聲量(PTT) ---------- */
+function renderForumBrands() {
+  const el = $("forumBrandBars");
+  const brands = META.laptop_brands || [];
+  if (!brands.length) { $("forumPanel").style.display = "none"; return; }
+  const [s, e] = resolvePeriod();
+  const endFull = e + "T23:59:59";
+  const forumArts = ALL.filter(a => isForumSource(a.source) &&
+    a.published_at >= s && a.published_at <= endFull);
+  const rows = brands.map(b => {
+    const match = aliasMatcher(findWatchAliases(b) || [b]);
+    const hits = forumArts.filter(a => match(a.title + " " + (a.summary || "")));
+    return { brand: b, count: hits.length };
+  }).sort((x, y) => y.count - x.count);
+  const maxCount = Math.max(1, rows[0].count);
+  const total = rows.reduce((s2, r) => s2 + r.count, 0);
+  let html = rows.map(r =>
+    `<div style="display:flex;align-items:center;gap:10px;margin:6px 0;cursor:pointer"
+          onclick="showForumBrand('${r.brand}')" title="點擊查看 ${r.brand} 的論壇討論">
+       <span style="width:80px;font-size:13px;color:var(--ink);text-align:right">${r.brand}</span>
+       <span style="flex:1;display:flex;align-items:center;gap:8px">
+         <span style="display:inline-block;height:15px;border-radius:3px;background:var(--c7);
+                      width:${Math.max(1.5, r.count / maxCount * 55).toFixed(1)}%"></span>
+         <span style="font-size:12px;color:var(--muted)">${r.count} 篇`
+         + (total ? `(${(r.count / total * 100).toFixed(0)}%)` : "") + `</span></span>
+     </div>`).join("");
+  html += `<div class="note" style="margin-top:10px">資料源:PTT 筆電板(nb-shopping)與電蝦板(PC_Shopping)之文章標題,
+    含購買諮詢/二手交易/討論;期間 ${s} ~ ${e} 共 ${forumArts.length} 篇論壇文章。
+    Mobile01/Dcard/巴哈姆特/Reddit 之 robots.txt 禁止程式抓取,依規範未納入。</div>`;
+  el.innerHTML = html;
+}
+
+async function showForumBrand(brand) {
+  $("dashboard").style.display = "none";
+  if (!(await needFullForPeriod())) return;
+  const [s, e] = resolvePeriod();
+  const endFull = e + "T23:59:59";
+  const match = aliasMatcher(findWatchAliases(brand) || [brand]);
+  const posts = ALL.filter(a => isForumSource(a.source) &&
+    a.published_at >= s && a.published_at <= endFull &&
+    match(a.title + " " + (a.summary || "")));
+  let html = `<h2 class="section">論壇討論:${brand}(期間 ${s} ~ ${e},共 ${posts.length} 篇)</h2>`;
+  html += `<p style="font-size:13px;color:var(--muted)">點右上「⌂ 回到首頁」返回。</p>`;
+  html += posts.slice(0, 200).map(cardHTML).join("") ||
+    `<div class="note">期間內無該品牌之論壇討論。</div>`;
+  $("status").textContent = "";
+  $("content").innerHTML = html;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 /* ---------- 新品發布雷達(國際/科技媒體 × 發布詞 × 品牌) ---------- */
 function renderLaunches() {
   const el = $("launchList");
@@ -1004,11 +1065,14 @@ async function renderCompare() {
     legendEl.innerHTML = ""; sovEl.innerHTML = "";
     return;
   }
-  // 媒體範圍過濾(全部/台灣/國際)
-  const INTL_SOURCES = new Set(["The Verge", "Tom's Hardware", "Engadget"]);
+  // 媒體範圍過濾(全部/台灣/國際/論壇)
   const scope = ($("cmpScope") || { value: "all" }).value;
-  const inScope = a => scope === "all"
-    || (scope === "intl") === INTL_SOURCES.has(a.source);
+  const inScope = a => {
+    if (scope === "all") return true;
+    if (scope === "intl") return isIntlSource(a.source);
+    if (scope === "forum") return isForumSource(a.source);
+    return !isIntlSource(a.source) && !isForumSource(a.source);   // 台灣媒體
+  };
   // 各公司/產品線每日提及數
   const series = names.map((name, i) => {
     const aliases = findWatchAliases(name) || [name];
