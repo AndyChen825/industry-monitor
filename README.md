@@ -99,6 +99,8 @@ powershell -ExecutionPolicy Bypass -File scheduler_setup\setup_windows.ps1
 | 深度雜誌 | 商業周刊、遠見 | RSS | ✅ 可自動抓取(付費牆內容僅公開標題+摘要) |
 | 深度雜誌 | 今周刊、天下 | — | ❌ 無公開 RSS / robots.txt 不允許;轉載至 Yahoo 之內容可經出處還原取得 |
 | 科技新創 | 數位時代、科技新報 | — | ❌ 無公開 RSS / robots.txt 不允許;轉載至 Yahoo 之內容可經出處還原取得 |
+| 論壇 | PTT 筆電板/電蝦板 | HTML(無 robots 限制) | ✅ 看板文章標題,每日累積 |
+| 論壇 | Mobile01、Dcard、巴哈姆特、Reddit | — | ❌ Mobile01 RSS 伺服器回 403 拒絕程式存取;其餘 robots.txt 禁止。需社群資料授權(輿情平台/官方 API) |
 | 官方公告 | 證交所重大訊息(OpenAPI) | API | ✅ 上市公司每日重大訊息(含台積電、華碩官方公告),法定揭露管道 |
 | 企業官網 | 華碩(company_sites.json 登錄制) | HTML | ✅ 可自動抓取;台積電新聞室 robots.txt 不允許,官方訊息由證交所重大訊息涵蓋 |
 | 公司登記 | 經濟部 GCIS 開放資料 API | API | 平臺憑證鏈異常時預設回退為[商工登記人工查詢連結](https://findbiz.nat.gov.tw/fts/query/QueryBar/queryInit.do)(網頁版含驗證碼,不做自動化);詳見 `config.py` 之 `GCIS_ALLOW_INSECURE_SSL` 說明 |

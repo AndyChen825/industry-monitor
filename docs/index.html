@@ -912,7 +912,7 @@ function renderForumBrands() {
      </div>`).join("");
   html += `<div class="note" style="margin-top:10px">資料源:PTT 筆電板(nb-shopping)與電蝦板(PC_Shopping)之文章標題,
     含購買諮詢/二手交易/討論;期間 ${s} ~ ${e} 共 ${forumArts.length} 篇論壇文章。
-    Mobile01/Dcard/巴哈姆特/Reddit 之 robots.txt 禁止程式抓取,依規範未納入。</div>`;
+    Mobile01(RSS 伺服器回 403 拒絕程式存取)、Dcard/巴哈姆特/Reddit(robots.txt 禁止)均未納入。</div>`;
   el.innerHTML = html;
 }
 

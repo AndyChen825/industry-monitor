@@ -33,12 +33,16 @@ def _parse_date(entry):
     return None
 
 
-def fetch_feeds(source_name, source_type, feed_urls):
-    """抓取多個 feed,回傳標準化文章 list。單一 feed 失敗僅記錄、不中斷。"""
+def fetch_feeds(source_name, source_type, feed_urls, check_robots=True):
+    """抓取多個 feed,回傳標準化文章 list。單一 feed 失敗僅記錄、不中斷。
+
+    check_robots=False 僅用於「網站頁面上明示提供訂閱連結」的 RSS
+    (站方主動發布給閱讀器程式的介面,與 robots.txt 防範之爬站不同)。
+    """
     items = []
     errors = []
     for url in feed_urls:
-        resp = http_get(url)
+        resp = http_get(url, check_robots=check_robots)
         if resp is None:
             errors.append(f"feed 無法取得:{url}")
             continue
