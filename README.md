@@ -69,6 +69,15 @@ powershell -ExecutionPolicy Bypass -File scheduler_setup\setup_windows.ps1
 
 每週一 12:00 自動:抓取新資料 → 更新資料庫 → 產出上週週報至 `reports/`。
 
+## 論壇聲量來源的分野(重要)
+
+線上儀表板的「論壇」數據**僅包含 PTT**(筆電板/電蝦板),每天自動更新。
+
+**Mobile01 不在自動監測系統內**。Mobile01 伺服器以 403 拒絕程式存取,無法合規自動抓取;其品牌聲量僅透過**人工抽樣快照**取得 —— 由操作者在本機 Chrome 登入狀態下手動觸發、一次性讀取版面,結果存於 `snapshots/mobile01_latest.json`(本機記錄,供逐日比較),**不進入雲端流程、不發布到儀表板、不會自動更新**。
+
+> 因此:儀表板上看到的論壇聲量 = PTT;Mobile01 數字只存在於人工快照報告中,兩者請勿混為一談。
+> 若需 Mobile01 / Dcard / FB 等平台納入自動監測,正途為輿情平台資料授權(意藍 OpView、i-Buzz 等)或官方 API。
+
 ## 自動通知
 
 每次雲端更新後,系統自動檢查並於必要時**開 GitHub Issue**(GitHub 會寄 email 給關注者):

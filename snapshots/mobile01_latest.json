@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-02",
+  "source": "Mobile01 八品牌筆電板(人工抽樣快照,各板第1頁近7天活躍討論串)",
+  "data": {
+    "華碩": {"active7": 13, "replies7": 4001},
+    "技嘉": {"active7": 5, "replies7": 4035},
+    "微星": {"active7": 5, "replies7": 392},
+    "宏碁": {"active7": 4, "replies7": 391},
+    "聯想": {"active7": 2, "replies7": 711},
+    "Dell": {"active7": 2, "replies7": 31},
+    "HP": {"active7": 1, "replies7": 19},
+    "Razer": {"active7": 1, "replies7": 567}
+  }
+}
